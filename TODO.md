@@ -1,38 +1,36 @@
 # 📝 ChistanLand Project Roadmap
 
 ## ✅ Done (Development)
-- [x] **Smart Typing Engine**: Implementation of character-by-character validation.
-- [x] **Kid-Friendly UI**: Large buttons, RTL support, and high-contrast visuals.
-- [x] **Feedback Loops**:
-    - [x] Haptic feedback on error.
-    - [x] Shake animation on wrong input.
-    - [x] Target Glow (Hint system) after 4 seconds of inactivity.
-- [x] **Game Mechanics**:
-    - [x] Streak counter.
-    - [x] Knowledge Plant growth visualizer.
-    - [x] Happy Chick status (Emoji-based).
-- [x] **Success Overlay**: Lottie-powered festival screen with congratulatory text.
+- [x] **Core Engine**: Smart typing validation with character-by-character feedback.
+- [x] **Saga Map (The Journey)**: Main navigation screen based on the "Island Metaphor" with locked/unlocked states.
+- [x] **Parental Dashboard**: Generative UI that translates technical data into human narratives for parents.
+- [x] **Full Curriculum Data**:
+    - [x] Added all 33 Persian alphabet letters (آ تا ی).
+    - [x] Added all 10 Persian numbers (۰ تا ۹).
+    - [x] Mapped unique words to every character (e.g., آ -> آب، ب -> بابا).
+- [x] **Visual Feedback**:
+    - [x] Haptic feedback and shake animation on errors.
+    - [x] Streak counter and progressive plant growth indicators.
+    - [x] Adaptive In-app Keyboard (MonkeyType Junior concept).
 
-## 🛠️ To-Do: Manual Steps (Assets)
-- [ ] **Audio Files**:
-    - [ ] Record/Source Phonics sounds for each letter (e.g., `a.mp3`, `b.mp3`).
-    - [ ] Place them in `app/src/main/res/raw/`.
-    - [ ] Record instructional voice-overs (e.g., "Tap the letter A").
+## 🛠️ To-Do: Manual Asset Integration (CRITICAL)
+*These must be added manually to the project folders to make the app functional.*
+
+- [ ] **Audio Files (Phonics)**:
+    - [ ] Place 43 MP3 files in `app/src/main/res/raw/`.
+    - [ ] Naming convention must match `LearningViewModel`: `audio_a1.mp3` to `audio_a33.mp3` and `audio_n0.mp3` to `audio_n9.mp3`.
+    - [ ] Add `pop_sound.mp3` and `error_sound.mp3`.
+- [ ] **Illustrations**:
+    - [ ] Source/Create 43 SVG/PNG images for word cards (e.g., picture of a "Rabbit" for letter 'Kh').
+    - [ ] Place in `app/src/main/res/drawable/` with names matching `img_a1`, etc.
 - [ ] **Lottie Animations**:
-    - [ ] Add `success_fest.json` to `app/src/main/res/raw/`.
-    - [ ] Add animations for the "Knowledge Plant" and "Happy Chick".
-- [ ] **Graphics**:
-    - [ ] Finalize SVG icons for word cards (replacing star emojis).
+    - [ ] `success_fest.json`: For the milestone celebration.
+    - [ ] `plant_growth.json`: For the progressive growth levels.
 
-## 🚀 To-Do: Development (Next Phases)
-- [ ] **Saga Map (The Journey)**:
-    - [ ] Create the main navigation screen (Island Metaphor).
-    - [ ] Implement parallax scrolling for the map.
-- [ ] **Adaptive Learning Logic**:
-    - [ ] Connect `LearningViewModel` to a Room Database.
-    - [ ] Implement Spaced Repetition (Leitner) timing logic.
-- [ ] **Parental Dashboard**:
-    - [ ] Create a "Generative UI" to translate raw data into human stories.
-    - [ ] Add the "Show me why" audit button for transparency.
-- [ ] **Offline-First Resilience**:
-    - [ ] Ensure all assets are bundled; zero external dependencies.
+## 🚀 To-Do: Advanced Development (Next Phases)
+- [ ] **Leitner Logic Refinement**:
+    - [ ] Finalize the exact time-stamps for 24h, 4-day, and 7-day review cycles in `LearningRepository`.
+- [ ] **Voice-Over Instructions**:
+    - [ ] Add an "Avatar" that speaks instructions (e.g., "بزن روی حرف ب").
+- [ ] **Offline-First Polish**:
+    - [ ] Verify database migration strategies for future content updates.
