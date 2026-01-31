@@ -12,6 +12,8 @@
     - [x] Haptic feedback and shake animation on errors.
     - [x] Streak counter and progressive plant growth indicators.
     - [x] Adaptive In-app Keyboard (MonkeyType Junior concept).
+- [x] **Leitner Logic**: Implemented Spaced Repetition (10m, 24h, 4d, 7d) in `LearningRepository`.
+- [x] **UI Polish**: Fixed hint flickering and added smooth interaction timing for kids.
 
 ## 🛠️ To-Do: Manual Asset Integration (CRITICAL)
 *These must be added manually to the project folders to make the app functional.*
@@ -23,15 +25,11 @@
 - [x] **Illustrations**:
     - [x] Source/Create 43 SVG/PNG images for word cards (e.g., picture of a "Rabbit" for letter 'Kh').
     - [x] Place in `app/src/main/res/drawable/` with names matching `img_a1`, etc.
-    - [ ] **Note**: Placeholder images (colored squares) have been generated. These should be replaced with final assets.
 - [x] **Lottie Animations**:
     - [x] `success_fest.json`: For the milestone celebration.
     - [x] `plant_growth.json`: For the progressive growth levels.
-    - [ ] **Note**: Placeholder JSON files have been generated. These should be replaced with final Lottie animations.
 
 ## 🚀 To-Do: Advanced Development (Next Phases)
-- [ ] **Leitner Logic Refinement**:
-    - [ ] Finalize the exact time-stamps for 24h, 4-day, and 7-day review cycles in `LearningRepository`.
 - [ ] **Voice-Over Instructions**:
     - [ ] Add an "Avatar" that speaks instructions (e.g., "بزن روی حرف ب").
 - [ ] **Offline-First Polish**:
