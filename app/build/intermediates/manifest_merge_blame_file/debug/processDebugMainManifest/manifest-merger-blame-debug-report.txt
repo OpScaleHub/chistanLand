@@ -35,115 +35,116 @@
 24-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:8:9-54
 25        android:supportsRtl="true"
 25-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:9:9-35
-26        android:theme="@style/Theme.AppCompat.Light.NoActionBar" >
-26-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:10:9-65
-27        <activity
-27-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:11:9-19:20
-28            android:name="com.example.chistanland.MainActivity"
-28-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:12:13-41
-29            android:exported="true"
-29-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:13:13-36
-30            android:theme="@style/Theme.AppCompat.Light.NoActionBar" >
-30-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:14:13-69
-31            <intent-filter>
-31-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:15:13-18:29
-32                <action android:name="android.intent.action.MAIN" />
-32-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:16:17-69
-32-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:16:25-66
-33
-34                <category android:name="android.intent.category.LAUNCHER" />
-34-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:17:17-77
-34-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:17:27-74
-35            </intent-filter>
-36        </activity>
-37
-38        <provider
-38-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
-39            android:name="androidx.startup.InitializationProvider"
-39-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:25:13-67
-40            android:authorities="com.example.chistanland.androidx-startup"
-40-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:26:13-68
-41            android:exported="false" >
-41-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:27:13-37
-42            <meta-data
-42-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
-43                android:name="androidx.emoji2.text.EmojiCompatInitializer"
-43-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:30:17-75
-44                android:value="androidx.startup" />
-44-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:31:17-49
-45            <meta-data
-45-->[androidx.lifecycle:lifecycle-process:2.8.2] /home/iceman/.gradle/caches/transforms-4/247b0ce5d1c89fe47161baf8c2998acc/transformed/lifecycle-process-2.8.2/AndroidManifest.xml:29:13-31:52
-46                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
-46-->[androidx.lifecycle:lifecycle-process:2.8.2] /home/iceman/.gradle/caches/transforms-4/247b0ce5d1c89fe47161baf8c2998acc/transformed/lifecycle-process-2.8.2/AndroidManifest.xml:30:17-78
-47                android:value="androidx.startup" />
-47-->[androidx.lifecycle:lifecycle-process:2.8.2] /home/iceman/.gradle/caches/transforms-4/247b0ce5d1c89fe47161baf8c2998acc/transformed/lifecycle-process-2.8.2/AndroidManifest.xml:31:17-49
-48            <meta-data
-48-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
-49                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
-49-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
-50                android:value="androidx.startup" />
-50-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
-51        </provider>
-52
-53        <activity
-53-->[androidx.compose.ui:ui-test-manifest:1.6.8] /home/iceman/.gradle/caches/transforms-4/8dacbb56967234e0b418c83c87b50105/transformed/ui-test-manifest-1.6.8/AndroidManifest.xml:23:9-25:39
-54            android:name="androidx.activity.ComponentActivity"
-54-->[androidx.compose.ui:ui-test-manifest:1.6.8] /home/iceman/.gradle/caches/transforms-4/8dacbb56967234e0b418c83c87b50105/transformed/ui-test-manifest-1.6.8/AndroidManifest.xml:24:13-63
-55            android:exported="true" />
-55-->[androidx.compose.ui:ui-test-manifest:1.6.8] /home/iceman/.gradle/caches/transforms-4/8dacbb56967234e0b418c83c87b50105/transformed/ui-test-manifest-1.6.8/AndroidManifest.xml:25:13-36
-56        <activity
-56-->[androidx.compose.ui:ui-tooling-android:1.6.8] /home/iceman/.gradle/caches/transforms-4/af3a1bcdb82c66d94806151f786e0ae1/transformed/ui-tooling-release/AndroidManifest.xml:23:9-25:39
-57            android:name="androidx.compose.ui.tooling.PreviewActivity"
-57-->[androidx.compose.ui:ui-tooling-android:1.6.8] /home/iceman/.gradle/caches/transforms-4/af3a1bcdb82c66d94806151f786e0ae1/transformed/ui-tooling-release/AndroidManifest.xml:24:13-71
-58            android:exported="true" />
-58-->[androidx.compose.ui:ui-tooling-android:1.6.8] /home/iceman/.gradle/caches/transforms-4/af3a1bcdb82c66d94806151f786e0ae1/transformed/ui-tooling-release/AndroidManifest.xml:25:13-36
-59
-60        <service
-60-->[androidx.room:room-runtime:2.6.1] /home/iceman/.gradle/caches/transforms-4/b7c8a5b55e850e5afe511802e1b760e5/transformed/room-runtime-2.6.1/AndroidManifest.xml:24:9-28:63
-61            android:name="androidx.room.MultiInstanceInvalidationService"
-61-->[androidx.room:room-runtime:2.6.1] /home/iceman/.gradle/caches/transforms-4/b7c8a5b55e850e5afe511802e1b760e5/transformed/room-runtime-2.6.1/AndroidManifest.xml:25:13-74
-62            android:directBootAware="true"
-62-->[androidx.room:room-runtime:2.6.1] /home/iceman/.gradle/caches/transforms-4/b7c8a5b55e850e5afe511802e1b760e5/transformed/room-runtime-2.6.1/AndroidManifest.xml:26:13-43
-63            android:exported="false" />
-63-->[androidx.room:room-runtime:2.6.1] /home/iceman/.gradle/caches/transforms-4/b7c8a5b55e850e5afe511802e1b760e5/transformed/room-runtime-2.6.1/AndroidManifest.xml:27:13-37
-64
-65        <receiver
-65-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
-66            android:name="androidx.profileinstaller.ProfileInstallReceiver"
-66-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
-67            android:directBootAware="false"
-67-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
-68            android:enabled="true"
-68-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
-69            android:exported="true"
-69-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
-70            android:permission="android.permission.DUMP" >
-70-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
-71            <intent-filter>
-71-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
-72                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
-72-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
-72-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
-73            </intent-filter>
-74            <intent-filter>
-74-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
-75                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
-75-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
-75-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
-76            </intent-filter>
-77            <intent-filter>
-77-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
-78                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
-78-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
-78-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
-79            </intent-filter>
-80            <intent-filter>
-80-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
-81                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
-81-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
-81-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
-82            </intent-filter>
-83        </receiver>
-84    </application>
-85
-86</manifest>
+26        android:testOnly="true"
+27        android:theme="@style/Theme.AppCompat.Light.NoActionBar" >
+27-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:10:9-65
+28        <activity
+28-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:11:9-19:20
+29            android:name="com.example.chistanland.MainActivity"
+29-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:12:13-41
+30            android:exported="true"
+30-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:13:13-36
+31            android:theme="@style/Theme.AppCompat.Light.NoActionBar" >
+31-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:14:13-69
+32            <intent-filter>
+32-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:15:13-18:29
+33                <action android:name="android.intent.action.MAIN" />
+33-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:16:17-69
+33-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:16:25-66
+34
+35                <category android:name="android.intent.category.LAUNCHER" />
+35-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:17:17-77
+35-->/home/iceman/StudioProjects/chistanLand/app/src/main/AndroidManifest.xml:17:27-74
+36            </intent-filter>
+37        </activity>
+38
+39        <provider
+39-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
+40            android:name="androidx.startup.InitializationProvider"
+40-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:25:13-67
+41            android:authorities="com.example.chistanland.androidx-startup"
+41-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:26:13-68
+42            android:exported="false" >
+42-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:27:13-37
+43            <meta-data
+43-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
+44                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+44-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:30:17-75
+45                android:value="androidx.startup" />
+45-->[androidx.emoji2:emoji2:1.3.0] /home/iceman/.gradle/caches/transforms-4/20b80dcb657b0819dd32e8705cadb34d/transformed/emoji2-1.3.0/AndroidManifest.xml:31:17-49
+46            <meta-data
+46-->[androidx.lifecycle:lifecycle-process:2.8.2] /home/iceman/.gradle/caches/transforms-4/247b0ce5d1c89fe47161baf8c2998acc/transformed/lifecycle-process-2.8.2/AndroidManifest.xml:29:13-31:52
+47                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+47-->[androidx.lifecycle:lifecycle-process:2.8.2] /home/iceman/.gradle/caches/transforms-4/247b0ce5d1c89fe47161baf8c2998acc/transformed/lifecycle-process-2.8.2/AndroidManifest.xml:30:17-78
+48                android:value="androidx.startup" />
+48-->[androidx.lifecycle:lifecycle-process:2.8.2] /home/iceman/.gradle/caches/transforms-4/247b0ce5d1c89fe47161baf8c2998acc/transformed/lifecycle-process-2.8.2/AndroidManifest.xml:31:17-49
+49            <meta-data
+49-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
+50                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+50-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
+51                android:value="androidx.startup" />
+51-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
+52        </provider>
+53
+54        <activity
+54-->[androidx.compose.ui:ui-test-manifest:1.6.8] /home/iceman/.gradle/caches/transforms-4/8dacbb56967234e0b418c83c87b50105/transformed/ui-test-manifest-1.6.8/AndroidManifest.xml:23:9-25:39
+55            android:name="androidx.activity.ComponentActivity"
+55-->[androidx.compose.ui:ui-test-manifest:1.6.8] /home/iceman/.gradle/caches/transforms-4/8dacbb56967234e0b418c83c87b50105/transformed/ui-test-manifest-1.6.8/AndroidManifest.xml:24:13-63
+56            android:exported="true" />
+56-->[androidx.compose.ui:ui-test-manifest:1.6.8] /home/iceman/.gradle/caches/transforms-4/8dacbb56967234e0b418c83c87b50105/transformed/ui-test-manifest-1.6.8/AndroidManifest.xml:25:13-36
+57        <activity
+57-->[androidx.compose.ui:ui-tooling-android:1.6.8] /home/iceman/.gradle/caches/transforms-4/af3a1bcdb82c66d94806151f786e0ae1/transformed/ui-tooling-release/AndroidManifest.xml:23:9-25:39
+58            android:name="androidx.compose.ui.tooling.PreviewActivity"
+58-->[androidx.compose.ui:ui-tooling-android:1.6.8] /home/iceman/.gradle/caches/transforms-4/af3a1bcdb82c66d94806151f786e0ae1/transformed/ui-tooling-release/AndroidManifest.xml:24:13-71
+59            android:exported="true" />
+59-->[androidx.compose.ui:ui-tooling-android:1.6.8] /home/iceman/.gradle/caches/transforms-4/af3a1bcdb82c66d94806151f786e0ae1/transformed/ui-tooling-release/AndroidManifest.xml:25:13-36
+60
+61        <service
+61-->[androidx.room:room-runtime:2.6.1] /home/iceman/.gradle/caches/transforms-4/b7c8a5b55e850e5afe511802e1b760e5/transformed/room-runtime-2.6.1/AndroidManifest.xml:24:9-28:63
+62            android:name="androidx.room.MultiInstanceInvalidationService"
+62-->[androidx.room:room-runtime:2.6.1] /home/iceman/.gradle/caches/transforms-4/b7c8a5b55e850e5afe511802e1b760e5/transformed/room-runtime-2.6.1/AndroidManifest.xml:25:13-74
+63            android:directBootAware="true"
+63-->[androidx.room:room-runtime:2.6.1] /home/iceman/.gradle/caches/transforms-4/b7c8a5b55e850e5afe511802e1b760e5/transformed/room-runtime-2.6.1/AndroidManifest.xml:26:13-43
+64            android:exported="false" />
+64-->[androidx.room:room-runtime:2.6.1] /home/iceman/.gradle/caches/transforms-4/b7c8a5b55e850e5afe511802e1b760e5/transformed/room-runtime-2.6.1/AndroidManifest.xml:27:13-37
+65
+66        <receiver
+66-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
+67            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+67-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
+68            android:directBootAware="false"
+68-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
+69            android:enabled="true"
+69-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
+70            android:exported="true"
+70-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
+71            android:permission="android.permission.DUMP" >
+71-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
+72            <intent-filter>
+72-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
+73                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+73-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
+73-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
+74            </intent-filter>
+75            <intent-filter>
+75-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
+76                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+76-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
+76-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
+77            </intent-filter>
+78            <intent-filter>
+78-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
+79                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+79-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
+79-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
+80            </intent-filter>
+81            <intent-filter>
+81-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
+82                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+82-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
+82-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/iceman/.gradle/caches/transforms-4/f1e18ee639e6371137bb16a8ea3fc999/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
+83            </intent-filter>
+84        </receiver>
+85    </application>
+86
+87</manifest>
