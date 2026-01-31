@@ -33,8 +33,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val _typedText = MutableStateFlow("")
     val typedText: StateFlow<String> = _typedText.asStateFlow()
 
+    // Now tracking only correct steps to show green dots
     private val _charStatus = MutableStateFlow<List<Boolean>>(emptyList())
     val charStatus: StateFlow<List<Boolean>> = _charStatus.asStateFlow()
+
+    // To keep track if the child made any mistake for the current word
+    private var hasErrorInCurrentWord: Boolean = false
 
     private val _streak = MutableStateFlow(0)
     val streak: StateFlow<Int> = _streak.asStateFlow()
@@ -54,8 +58,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val fullAlphabet = listOf(
         "آ", "ا", "ب", "پ", "ت", "ث", "ج", "چ", "ح", "خ", "د", "ذ", "ر", "ز", "ژ", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ک", "گ", "ل", "م", "ن", "و", "ه", "ی"
     )
-    
-    private val fullNumbers = listOf("۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹")
 
     fun selectCategory(category: String?) {
         _selectedCategory.value = category
@@ -65,31 +67,20 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _currentItem.value = item
         _typedText.value = ""
         _charStatus.value = emptyList()
+        hasErrorInCurrentWord = false
         generateAdaptiveKeyboard(item.word, item.category)
         playSound(item.phonetic)
     }
 
     private fun generateAdaptiveKeyboard(word: String, category: String) {
-        if (category == "NUMBER") {
-            // For numbers, we only show alphabet keys to spell the number word
-            // We DON'T show digits in the keyboard to avoid confusion
-            val wordChars = word.map { it.toString() }.toSet()
-            val distractorsCount = (10 - wordChars.size).coerceAtLeast(4)
-            val distractors = fullAlphabet.filterNot { wordChars.contains(it) }
-                .shuffled()
-                .take(distractorsCount)
-            
-            _keyboardKeys.value = (wordChars + distractors).shuffled()
-        } else {
-            // For alphabet, standard distractor logic
-            val wordChars = word.map { it.toString() }.toSet()
-            val distractorsCount = (10 - wordChars.size).coerceAtLeast(4)
-            val distractors = fullAlphabet.filterNot { wordChars.contains(it) }
-                .shuffled()
-                .take(distractorsCount)
-            
-            _keyboardKeys.value = (wordChars + distractors).shuffled()
-        }
+        // Uniform logic for both categories: Keyboard only contains alphabet letters to spell names
+        val wordChars = word.map { it.toString() }.toSet()
+        val distractorsCount = (10 - wordChars.size).coerceAtLeast(4)
+        val distractors = fullAlphabet.filterNot { wordChars.contains(it) }
+            .shuffled()
+            .take(distractorsCount)
+        
+        _keyboardKeys.value = (wordChars + distractors).shuffled()
     }
 
     fun onCharTyped(char: String) {
@@ -97,27 +88,28 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         if (_typedText.value.length >= current.word.length) return
 
         val targetChar = current.word[_typedText.value.length].toString()
-        val isCorrect = char == targetChar
-
-        _typedText.value += char
-        _charStatus.value = _charStatus.value + isCorrect
-
-        if (isCorrect) {
+        
+        if (char == targetChar) {
+            // Correct hit: Advance
+            _typedText.value += char
+            _charStatus.value = _charStatus.value + true
             playSound("pop_sound")
+
+            // Check if word is finished
+            if (_typedText.value.length == current.word.length) {
+                if (!hasErrorInCurrentWord) {
+                    _streak.value += 1
+                    completeLevel(true)
+                } else {
+                    _streak.value = 0
+                    completeLevel(false)
+                }
+            }
         } else {
+            // Wrong hit: Shake and block
+            hasErrorInCurrentWord = true
             viewModelScope.launch { _uiEvent.emit(UiEvent.Error) }
             playSound("error_sound")
-        }
-
-        if (_typedText.value.length == current.word.length) {
-            val allCorrect = _charStatus.value.all { it }
-            if (allCorrect) {
-                _streak.value += 1
-                completeLevel(true)
-            } else {
-                _streak.value = 0
-                completeLevel(false)
-            }
         }
     }
 
