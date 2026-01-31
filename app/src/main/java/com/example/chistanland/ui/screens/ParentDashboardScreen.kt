@@ -1,24 +1,31 @@
 package com.example.chistanland.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.chistanland.ui.LearningViewModel
-import com.example.chistanland.ui.theme.DeepOcean
-import com.example.chistanland.ui.theme.PastelGreen
-import com.example.chistanland.ui.theme.SoftYellow
+import com.example.chistanland.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,74 +40,200 @@ fun ParentDashboardScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("گزارش پیشرفت", fontWeight = FontWeight.Bold) },
+                title = { 
+                    Text(
+                        "پنل نظارتی والدین", 
+                        fontWeight = FontWeight.Black,
+                        color = DeepOcean
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "برگشت")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            contentDescription = "برگشت",
+                            tint = DeepOcean
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Transparent
+                )
             )
         },
-        containerColor = SoftYellow.copy(alpha = 0.1f)
+        containerColor = Color.White
     ) { padding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            item {
-                Text(
-                    "داستان سفر فرزند شما",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = DeepOcean,
-                    modifier = Modifier.padding(top = 16.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.White, SkyBlue.copy(alpha = 0.1f))
+                    )
                 )
-            }
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 40.dp)
+            ) {
+                // Summary Stats
+                item {
+                    ProgressSummaryRow(items)
+                }
 
-            // Generative Narrative Card
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Column(modifier = Modifier.padding(24.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Info, contentDescription = null, tint = DeepOcean)
-                            Spacer(modifier = Modifier.width(8.dp))
+                item {
+                    Text(
+                        "داستان سفر دانایی",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DeepOcean
+                    )
+                }
+
+                // Generative Narrative Card
+                item {
+                    NarrativeCard(narrative, showRawData, onToggleData = { showRawData = !showRawData })
+                }
+
+                // Audit Details (Show me why)
+                item {
+                    AnimatedVisibility(
+                        visible = showRawData,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(
-                                text = "تحلیل هوشمند",
+                                "جزییات فنی یادگیری (Audit Log)",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = DeepOcean.copy(alpha = 0.6f)
+                                color = DeepOcean.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(top = 8.dp)
                             )
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = narrative,
-                            style = MaterialTheme.typography.bodyLarge,
-                            lineHeight = 28.sp,
-                            color = DeepOcean
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        TextButton(onClick = { showRawData = !showRawData }) {
-                            Text(if (showRawData) "پنهان‌سازی جزییات فنی" else "مشاهده داده‌های خام")
+                            items.forEach { item ->
+                                RawDataItem(item)
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
 
-            if (showRawData) {
-                items(items) { item ->
-                    RawDataItem(item)
+@Composable
+fun ProgressSummaryRow(items: List<com.example.chistanland.data.LearningItem>) {
+    val mastered = items.count { it.isMastered }
+    val total = items.size
+    val progress = if (total > 0) mastered.toFloat() / total else 0f
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(SkyBlue.copy(alpha = 0.1f))
+            .padding(20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.size(70.dp),
+                color = PastelGreen,
+                strokeWidth = 8.dp,
+                trackColor = Color.White
+            )
+            Text(
+                text = "${(progress * 100).toInt()}%",
+                fontWeight = FontWeight.Black,
+                color = DeepOcean
+            )
+        }
+        Spacer(modifier = Modifier.width(20.dp))
+        Column {
+            Text(
+                text = "پیشرفت کل",
+                fontWeight = FontWeight.Bold,
+                color = DeepOcean
+            )
+            Text(
+                text = "$mastered از $total حرف در حافظه بلندمدت",
+                fontSize = 14.sp,
+                color = DeepOcean.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+@Composable
+fun NarrativeCard(
+    narrative: String,
+    isDataVisible: Boolean,
+    onToggleData: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = RoundedCornerShape(32.dp),
+        border = BorderStroke(1.dp, SkyBlue.copy(alpha = 0.2f))
+    ) {
+        Column(modifier = Modifier.padding(28.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    color = MangoOrange.copy(alpha = 0.1f),
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        Icons.Default.TrendingUp, 
+                        contentDescription = null, 
+                        tint = MangoOrange,
+                        modifier = Modifier.padding(8.dp).size(20.dp)
+                    )
                 }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "تحلیل هوشمند پیشرفت",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MangoOrange,
+                    fontWeight = FontWeight.Bold
+                )
             }
-
-            item {
-                Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = narrative,
+                fontSize = 18.sp,
+                lineHeight = 32.sp,
+                color = DeepOcean,
+                textAlign = TextAlign.Justify
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Button(
+                onClick = onToggleData,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DeepOcean.copy(alpha = 0.05f),
+                    contentColor = DeepOcean
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (isDataVisible) Icons.Default.Star else Icons.Default.Info, 
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        if (isDataVisible) "بستن جزییات فنی" else "علت این تحلیل چیست؟ (Show me why)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
             }
         }
     }
@@ -108,27 +241,46 @@ fun ParentDashboardScreen(
 
 @Composable
 fun RawDataItem(item: com.example.chistanland.data.LearningItem) {
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.7f)),
-        shape = RoundedCornerShape(16.dp)
+        color = Color.White,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(text = "حرف: ${item.character}", fontWeight = FontWeight.Bold, color = DeepOcean)
-                Text(text = "کلمه: ${item.word}", style = MaterialTheme.typography.bodySmall, color = DeepOcean.copy(alpha = 0.7f))
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(SkyBlue.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(item.character, fontWeight = FontWeight.Black, fontSize = 20.sp, color = DeepOcean)
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = item.word, fontWeight = FontWeight.Bold, color = DeepOcean)
+                Text(
+                    text = "آخرین تمرین: ${if(item.lastReviewTime == 0L) "هرگز" else "اخیراً"}", 
+                    fontSize = 12.sp, 
+                    color = Color.Gray
+                )
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(text = "سطح: ${item.level}/5", color = DeepOcean, fontSize = 12.sp)
+                Text(
+                    text = "سطح ${item.level}", 
+                    color = if(item.isMastered) MangoOrange else DeepOcean,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
                 LinearProgressIndicator(
                     progress = { item.level / 5f },
-                    color = PastelGreen,
-                    trackColor = Color.LightGray.copy(alpha = 0.3f),
-                    modifier = Modifier.width(80.dp).padding(top = 4.dp)
+                    color = if(item.isMastered) MangoOrange else PastelGreen,
+                    trackColor = Color.LightGray.copy(alpha = 0.2f),
+                    modifier = Modifier.width(60.dp).clip(CircleShape).height(6.dp)
                 )
             }
         }

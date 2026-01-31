@@ -18,14 +18,15 @@ class LearningRepository(private val learningDao: LearningDao) {
         if (isCorrect) {
             newLevel = (item.level + 1).coerceAtMost(5)
             nextReviewDelay = when (newLevel) {
-                1 -> 0 // Should not happen if correct, but for safety
-                2 -> TimeUnit.HOURS.toMillis(24)
-                3 -> TimeUnit.DAYS.toMillis(4)
-                4 -> TimeUnit.DAYS.toMillis(7)
-                5 -> Long.MAX_VALUE // Mastered
+                1 -> TimeUnit.MINUTES.toMillis(10) // Immediate review for Level 1
+                2 -> TimeUnit.HOURS.toMillis(24)    // 1 Day
+                3 -> TimeUnit.DAYS.toMillis(4)     // 4 Days
+                4 -> TimeUnit.DAYS.toMillis(7)     // 1 Week
+                5 -> Long.MAX_VALUE                // Mastered (Long Term)
                 else -> 0
             }
         } else {
+            // Loss Aversion: Return to level 1 on error
             newLevel = 1
             nextReviewDelay = 0
         }
