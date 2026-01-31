@@ -18,8 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.chistanland.ui.LearningViewModel
@@ -87,76 +89,82 @@ fun LearningSessionScreen(
     val item = currentItem!!
     val targetChar = item.word.getOrNull(typedText.length)?.toString() ?: ""
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "برگشت")
-                }
-                StreakIndicator(streak = streak)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Progress Indicators
-            Row(
-                modifier = Modifier.fillMaxWidth().graphicsLayer(translationY = levelDownY.value),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                PlantProgress(level = item.level)
-                ChickStatus(streak = streak)
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Word Image Card
-            Box(
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier = Modifier
-                    .size(200.dp)
-                    .graphicsLayer(translationX = shakeOffset.value)
-                    .clip(RoundedCornerShape(32.dp))
-                    .background(SoftYellow),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = item.word,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MangoOrange
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "برگشت",
+                            modifier = Modifier.graphicsLayer { rotationY = 180f }
+                        )
+                    }
+                    StreakIndicator(streak = streak)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Progress Indicators
+                Row(
+                    modifier = Modifier.fillMaxWidth().graphicsLayer(translationY = levelDownY.value),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    PlantProgress(level = item.level)
+                    ChickStatus(streak = streak)
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Word Image Card
+                Box(
+                    modifier = Modifier
+                        .size(200.dp)
+                        .graphicsLayer(translationX = shakeOffset.value)
+                        .clip(RoundedCornerShape(32.dp))
+                        .background(SoftYellow),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = item.word,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MangoOrange
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // Dynamic Word Display
+                WordDisplay(
+                    targetWord = item.word,
+                    typedText = typedText,
+                    charStatus = charStatus,
+                    modifier = Modifier.graphicsLayer(translationX = shakeOffset.value)
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Adaptive Keyboard
+                KidKeyboard(
+                    keys = keyboardKeys,
+                    onKeyClick = { viewModel.onCharTyped(it) },
+                    targetChar = targetChar,
+                    showHint = showHint
                 )
             }
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Dynamic Word Display
-            WordDisplay(
-                targetWord = item.word,
-                typedText = typedText,
-                charStatus = charStatus,
-                modifier = Modifier.graphicsLayer(translationX = shakeOffset.value)
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Adaptive Keyboard
-            KidKeyboard(
-                keys = keyboardKeys,
-                onKeyClick = { viewModel.onCharTyped(it) },
-                targetChar = targetChar,
-                showHint = showHint
-            )
         }
     }
 }
