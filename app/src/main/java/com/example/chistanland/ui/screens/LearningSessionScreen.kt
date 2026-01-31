@@ -51,18 +51,27 @@ fun LearningSessionScreen(
 
     val shakeOffset = remember { Animatable(0f) }
     val levelDownY = remember { Animatable(0f) }
+    
+    // Hint logic with protection against flickering
     var showHint by remember { mutableStateOf(false) }
+    var hintBlocked by remember { mutableStateOf(false) }
     var lastInputTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showSuccessFestival by remember { mutableStateOf(false) }
 
     LaunchedEffect(typedText) {
         lastInputTime = System.currentTimeMillis()
         showHint = false
+        // Block hint for a short duration after any input to prevent "ghost" highlighting
+        hintBlocked = true
+        delay(800) 
+        hintBlocked = false
     }
 
     LaunchedEffect(lastInputTime) {
-        delay(4000)
-        showHint = true
+        delay(5000) // 5 seconds of idle time before showing hint
+        if (!hintBlocked) {
+            showHint = true
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -165,9 +174,12 @@ fun LearningSessionScreen(
 
                 KidKeyboard(
                     keys = keyboardKeys,
-                    onKeyClick = { viewModel.onCharTyped(it) },
+                    onKeyClick = { char ->
+                        showHint = false
+                        viewModel.onCharTyped(char)
+                    },
                     targetChar = targetChar,
-                    showHint = showHint
+                    showHint = showHint && !hintBlocked
                 )
             }
 
@@ -470,6 +482,12 @@ fun KeyButton(char: String, onClick: () -> Unit, isHighlighted: Boolean, modifie
         ), label = "scale"
     )
 
+    // Smooth color transition for the highlight
+    val animatedBgColor by animateColorAsState(
+        targetValue = if (isHighlighted) Color(0xFFFFD600) else MangoOrange,
+        animationSpec = tween(400)
+    )
+
     Surface(
         modifier = modifier
             .aspectRatio(1.1f)
@@ -478,7 +496,7 @@ fun KeyButton(char: String, onClick: () -> Unit, isHighlighted: Boolean, modifie
             .clickable { onClick() }
             .shadow(if (isHighlighted) 12.dp else 4.dp, RoundedCornerShape(18.dp)),
         shape = RoundedCornerShape(18.dp),
-        color = if (isHighlighted) Color(0xFFFFD600) else MangoOrange,
+        color = animatedBgColor,
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Text(

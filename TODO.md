@@ -20,12 +20,14 @@
     - [ ] Place 43 MP3 files in `app/src/main/res/raw/`.
     - [ ] Naming convention must match `LearningViewModel`: `audio_a1.mp3` to `audio_a33.mp3` and `audio_n0.mp3` to `audio_n9.mp3`.
     - [ ] Add `pop_sound.mp3` and `error_sound.mp3`.
-- [ ] **Illustrations**:
-    - [ ] Source/Create 43 SVG/PNG images for word cards (e.g., picture of a "Rabbit" for letter 'Kh').
-    - [ ] Place in `app/src/main/res/drawable/` with names matching `img_a1`, etc.
-- [ ] **Lottie Animations**:
-    - [ ] `success_fest.json`: For the milestone celebration.
-    - [ ] `plant_growth.json`: For the progressive growth levels.
+- [x] **Illustrations**:
+    - [x] Source/Create 43 SVG/PNG images for word cards (e.g., picture of a "Rabbit" for letter 'Kh').
+    - [x] Place in `app/src/main/res/drawable/` with names matching `img_a1`, etc.
+    - [ ] **Note**: Placeholder images (colored squares) have been generated. These should be replaced with final assets.
+- [x] **Lottie Animations**:
+    - [x] `success_fest.json`: For the milestone celebration.
+    - [x] `plant_growth.json`: For the progressive growth levels.
+    - [ ] **Note**: Placeholder JSON files have been generated. These should be replaced with final Lottie animations.
 
 ## 🚀 To-Do: Advanced Development (Next Phases)
 - [ ] **Leitner Logic Refinement**:

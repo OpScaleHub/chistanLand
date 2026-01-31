@@ -2,6 +2,7 @@ package com.example.chistanland.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -11,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,22 +67,34 @@ fun HomeScreen(
             
             Spacer(modifier = Modifier.height(64.dp))
             
+            // Fixed Parent Gate: Now actually responds to long press
             Text(
                 text = "تنظیمات والدین (لمس طولانی)",
                 color = DeepOcean.copy(alpha = 0.5f),
                 fontSize = 14.sp,
-                modifier = Modifier.clickable { /* logic handled by long press usually, but for simplicity here we can add a button or just leave as hint */ }
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onLongPress = { onOpenParentPanel() }
+                        )
+                    }
+                    .padding(8.dp)
             )
         }
         
-        // Hidden/Small Parent Gate
+        // Hidden/Small Parent Gate (Backup/Secondary)
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 32.dp)
                 .size(60.dp)
                 .clip(RoundedCornerShape(30.dp))
-                .clickable { onOpenParentPanel() }, // In a real app, use long press
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onLongPress = { onOpenParentPanel() }
+                    )
+                },
             color = Color.Transparent
         ) {}
     }
