@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.chistanland.ui.LearningViewModel
+import com.example.chistanland.ui.screens.HomeScreen
 import com.example.chistanland.ui.screens.IslandMapScreen
 import com.example.chistanland.ui.screens.LearningSessionScreen
 import com.example.chistanland.ui.screens.ParentDashboardScreen
@@ -52,7 +55,25 @@ class MainActivity : ComponentActivity() {
 fun ChistanApp(viewModel: LearningViewModel) {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "map") {
+    NavHost(
+        navController = navController, 
+        startDestination = "home",
+        enterTransition = { fadeIn(animationSpec = tween(400)) + scaleIn(initialScale = 0.9f) },
+        exitTransition = { fadeOut(animationSpec = tween(400)) + scaleOut(targetScale = 1.1f) },
+        popEnterTransition = { fadeIn(animationSpec = tween(400)) + scaleIn(initialScale = 1.1f) },
+        popExitTransition = { fadeOut(animationSpec = tween(400)) + scaleOut(targetScale = 0.9f) }
+    ) {
+        composable("home") {
+            HomeScreen(
+                onSelectCategory = { category ->
+                    viewModel.selectCategory(category)
+                    navController.navigate("map")
+                },
+                onOpenParentPanel = {
+                    navController.navigate("parent")
+                }
+            )
+        }
         composable("map") {
             IslandMapScreen(
                 viewModel = viewModel,
@@ -62,6 +83,9 @@ fun ChistanApp(viewModel: LearningViewModel) {
                 },
                 onOpenParentPanel = {
                     navController.navigate("parent")
+                },
+                onBack = {
+                    navController.popBackStack()
                 }
             )
         }

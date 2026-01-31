@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
@@ -40,23 +41,30 @@ import com.example.chistanland.ui.theme.SkyBlue
 fun IslandMapScreen(
     viewModel: LearningViewModel,
     onStartItem: (LearningItem) -> Unit,
-    onOpenParentPanel: () -> Unit
+    onOpenParentPanel: () -> Unit,
+    onBack: () -> Unit
 ) {
-    val items by viewModel.allItems.collectAsState()
+    val items by viewModel.filteredItems.collectAsState()
+    val category by viewModel.selectedCategory.collectAsState()
     
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(SkyBlue.copy(alpha = 0.5f), Color.White)
+                    colors = if (category == "NUMBER") 
+                        listOf(MangoOrange.copy(alpha = 0.2f), Color.White)
+                    else 
+                        listOf(SkyBlue.copy(alpha = 0.5f), Color.White)
                 )
             )
     ) {
-        // Clouds/Background elements could be added here
-        
         Column(modifier = Modifier.fillMaxSize()) {
-            MapHeader(onOpenParentPanel)
+            MapHeader(
+                category = category ?: "",
+                onOpenParentPanel = onOpenParentPanel,
+                onBack = onBack
+            )
             
             if (items.isEmpty()) {
                 EmptyMapState { viewModel.seedData() }
@@ -68,7 +76,11 @@ fun IslandMapScreen(
 }
 
 @Composable
-fun MapHeader(onOpenParentPanel: () -> Unit) {
+fun MapHeader(
+    category: String,
+    onOpenParentPanel: () -> Unit,
+    onBack: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -76,21 +88,26 @@ fun MapHeader(onOpenParentPanel: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
-            Text(
-                text = "جزیره‌های دانایی",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Black,
-                color = DeepOcean
-            )
-            Text(
-                text = "ماجراجویی الفبا",
-                fontSize = 16.sp,
-                color = DeepOcean.copy(alpha = 0.6f)
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = DeepOcean)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = if (category == "NUMBER") "قله اعداد" else "جزیره‌های دانایی",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black,
+                    color = DeepOcean
+                )
+                Text(
+                    text = if (category == "NUMBER") "ماجراجویی شمارش" else "ماجراجویی الفبا",
+                    fontSize = 14.sp,
+                    color = DeepOcean.copy(alpha = 0.6f)
+                )
+            }
         }
         
-        // Parent Gate: Long press required
         Surface(
             modifier = Modifier
                 .size(48.dp)
@@ -103,7 +120,7 @@ fun MapHeader(onOpenParentPanel: () -> Unit) {
         ) {
             Icon(
                 imageVector = Icons.Default.Settings,
-                contentDescription = "تنظیمات والدین",
+                contentDescription = "Settings",
                 modifier = Modifier.padding(12.dp),
                 tint = DeepOcean.copy(alpha = 0.4f)
             )
@@ -118,6 +135,7 @@ fun SagaMap(items: List<LearningItem>, onStartItem: (LearningItem) -> Unit) {
         contentPadding = PaddingValues(bottom = 100.dp, top = 20.dp)
     ) {
         itemsIndexed(items) { index, item ->
+            // Logic: First item is always unlocked. Others unlocked if previous is mastered.
             val isLocked = index > 0 && !items[index - 1].isMastered
             val isEven = index % 2 == 0
             
@@ -127,7 +145,6 @@ fun SagaMap(items: List<LearningItem>, onStartItem: (LearningItem) -> Unit) {
                     .padding(vertical = 16.dp),
                 contentAlignment = if (isEven) Alignment.CenterStart else Alignment.CenterEnd
             ) {
-                // Connection Path (Conceptual)
                 if (index < items.size - 1) {
                     PathConnection(isEven)
                 }
@@ -196,7 +213,6 @@ fun IslandNode(
             .clickable(enabled = !isLocked) { onClick() }
     ) {
         Box(contentAlignment = Alignment.Center) {
-            // Island Base
             Surface(
                 modifier = Modifier
                     .size(120.dp)
@@ -205,7 +221,7 @@ fun IslandNode(
                 color = when {
                     isLocked -> Color(0xFFE0E0E0)
                     item.isMastered -> Color(0xFFFFD600)
-                    else -> PastelGreen
+                    else -> if (item.category == "NUMBER") MangoOrange else PastelGreen
                 },
                 border = BorderStroke(
                     4.dp, 
@@ -220,13 +236,12 @@ fun IslandNode(
                             text = item.character,
                             fontSize = 48.sp,
                             fontWeight = FontWeight.Black,
-                            color = if (item.isMastered) DeepOcean else Color.White
+                            color = if (item.isMastered || item.category == "NUMBER") DeepOcean else Color.White
                         )
                     }
                 }
             }
 
-            // Level Badges/Indicators
             if (!isLocked && item.level > 1 && !item.isMastered) {
                 SmallPlantBadge(item.level, Modifier.align(Alignment.TopEnd))
             }
