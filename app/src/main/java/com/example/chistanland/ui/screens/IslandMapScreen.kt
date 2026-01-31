@@ -118,7 +118,7 @@ fun IslandNode(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = item.char,
+                text = item.character,
                 style = MaterialTheme.typography.displayLarge,
                 color = Color.White
             )

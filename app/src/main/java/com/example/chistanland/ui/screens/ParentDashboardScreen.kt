@@ -119,7 +119,7 @@ fun RawDataItem(item: com.example.chistanland.data.LearningItem) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(text = "حرف: ${item.char}", fontWeight = FontWeight.Bold, color = DeepOcean)
+                Text(text = "حرف: ${item.character}", fontWeight = FontWeight.Bold, color = DeepOcean)
                 Text(text = "کلمه: ${item.word}", style = MaterialTheme.typography.bodySmall, color = DeepOcean.copy(alpha = 0.7f))
             }
             Column(horizontalAlignment = Alignment.End) {

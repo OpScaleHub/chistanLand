@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "learning_items")
 data class LearningItem(
     @PrimaryKey val id: String,
-    val char: String,
+    val character: String,
     val word: String,
     val phonetic: String, // Path or resource name for phonetic audio
     val imageUrl: String, // Local asset path
