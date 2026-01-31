@@ -1,21 +1,24 @@
 package com.example.chistanland.ui.screens
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +26,8 @@ import com.example.chistanland.ui.LearningViewModel
 import com.example.chistanland.ui.theme.MangoOrange
 import com.example.chistanland.ui.theme.PastelGreen
 import com.example.chistanland.ui.theme.SoftYellow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun LearningSessionScreen(
@@ -31,63 +36,178 @@ fun LearningSessionScreen(
 ) {
     val currentItem by viewModel.currentItem.collectAsState()
     val typedText by viewModel.typedText.collectAsState()
+    val charStatus by viewModel.charStatus.collectAsState()
+    val streak by viewModel.streak.collectAsState()
+    val keyboardKeys by viewModel.keyboardKeys.collectAsState()
+    val view = LocalView.current
+
+    val shakeOffset = remember { Animatable(0f) }
+    val levelDownY = remember { Animatable(0f) }
+    var showHint by remember { mutableStateOf(false) }
+    var lastInputTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(typedText) {
+        lastInputTime = System.currentTimeMillis()
+        showHint = false
+    }
+
+    LaunchedEffect(lastInputTime) {
+        delay(4000)
+        showHint = true
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collectLatest { event ->
+            when (event) {
+                is LearningViewModel.UiEvent.Error -> {
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    repeat(4) {
+                        shakeOffset.animateTo(15f, animationSpec = tween(40))
+                        shakeOffset.animateTo(-15f, animationSpec = tween(40))
+                    }
+                    shakeOffset.animateTo(0f, animationSpec = tween(40))
+                }
+                is LearningViewModel.UiEvent.Success -> {
+                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                }
+                is LearningViewModel.UiEvent.LevelDown -> {
+                    // "Falling Balloon" animation
+                    levelDownY.animateTo(300f, animationSpec = tween(1000, easing = LinearOutSlowInEasing))
+                    levelDownY.snapTo(0f)
+                }
+            }
+        }
+    }
 
     if (currentItem == null) {
-        // Success state or transition back
-        LaunchedEffect(Unit) {
-            onBack()
-        }
+        LaunchedEffect(Unit) { onBack() }
         return
     }
 
     val item = currentItem!!
+    val targetChar = item.word.getOrNull(typedText.length)?.toString() ?: ""
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "برگشت")
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "برگشت")
+                }
+                StreakIndicator(streak = streak)
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Progress Indicators
+            Row(
+                modifier = Modifier.fillMaxWidth().graphicsLayer(translationY = levelDownY.value),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                PlantProgress(level = item.level)
+                ChickStatus(streak = streak)
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Word Image Card
+            Box(
+                modifier = Modifier
+                    .size(200.dp)
+                    .graphicsLayer(translationX = shakeOffset.value)
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(SoftYellow),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = item.word,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MangoOrange
+                )
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Dynamic Word Display
+            WordDisplay(
+                targetWord = item.word,
+                typedText = typedText,
+                charStatus = charStatus,
+                modifier = Modifier.graphicsLayer(translationX = shakeOffset.value)
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Adaptive Keyboard
+            KidKeyboard(
+                keys = keyboardKeys,
+                onKeyClick = { viewModel.onCharTyped(it) },
+                targetChar = targetChar,
+                showHint = showHint
+            )
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(20.dp))
+@Composable
+fun StreakIndicator(streak: Int) {
+    val scale by animateFloatAsState(
+        targetValue = if (streak > 0) 1.2f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy)
+    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
+    ) {
+        Text(
+            text = "$streak",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MangoOrange,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Icon(
+            imageVector = Icons.Default.Star,
+            contentDescription = null,
+            tint = MangoOrange,
+            modifier = Modifier.size(32.dp)
+        )
+    }
+}
 
-        // Visual Progress (Plant Metaphor)
-        PlantProgress(level = item.level)
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // Image Placeholder (In real app, use Painter or Coil)
+@Composable
+fun ChickStatus(streak: Int) {
+    val chickEmoji = when {
+        streak >= 5 -> "🐣"
+        streak > 0 -> "🐥"
+        else -> "🥚"
+    }
+    
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
-                .size(200.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(SoftYellow),
+                .size(64.dp)
+                .background(Color.Yellow.copy(alpha = if (streak > 0) 1f else 0.2f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "تصویر ${item.word}", fontSize = 24.sp)
+            Text(text = chickEmoji, fontSize = 32.sp)
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Word Display (MonkeyType style)
-        WordDisplay(targetWord = item.word, typedText = typedText)
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Custom Keyboard
-        KidKeyboard(
-            onKeyClick = { viewModel.onCharTyped(it) },
-            allowedChars = listOf("آ", "ب", "پ", "ت", "ث", "ا") // Dynamically filter in real app
+        Text(
+            text = if (streak > 0) "خوشحال" else "در انتظار",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Black.copy(alpha = 0.6f)
         )
     }
 }
@@ -95,62 +215,73 @@ fun LearningSessionScreen(
 @Composable
 fun PlantProgress(level: Int) {
     val progressSize by animateDpAsState(
-        targetValue = (level * 30).dp,
+        targetValue = (level * 20).dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
     )
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            modifier = Modifier
-                .height(150.dp)
-                .width(100.dp),
+            modifier = Modifier.height(120.dp).width(80.dp),
             contentAlignment = Alignment.BottomCenter
         ) {
-            // Pot
             Box(
                 modifier = Modifier
-                    .size(60.dp, 40.dp)
-                    .background(Color(0xFF8B4513), RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 8.dp, bottomEnd = 8.dp))
+                    .size(40.dp, 30.dp)
+                    .background(Color(0xFF8B4513), RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
             )
-            // Stem
             Box(
                 modifier = Modifier
-                    .width(8.dp)
+                    .width(6.dp)
                     .height(progressSize)
                     .background(PastelGreen)
                     .align(Alignment.BottomCenter)
-                    .offset(y = (-35).dp)
+                    .offset(y = (-25).dp)
             )
         }
-        Text("سطح یادگیری: $level", style = MaterialTheme.typography.labelSmall)
+        Text("سطح رشد: $level", style = MaterialTheme.typography.labelSmall)
     }
 }
 
 @Composable
-fun WordDisplay(targetWord: String, typedText: String) {
+fun WordDisplay(
+    targetWord: String,
+    typedText: String,
+    charStatus: List<Boolean>,
+    modifier: Modifier = Modifier
+) {
     Row(
+        modifier = modifier,
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         targetWord.forEachIndexed { index, char ->
+            val status = charStatus.getOrNull(index)
             val isTyped = index < typedText.length
-            val color = if (isTyped) PastelGreen else Color.LightGray
             
+            val color = when {
+                status == true -> PastelGreen
+                status == false -> Color.Red
+                else -> Color.Gray.copy(alpha = 0.2f)
+            }
+
+            val displayText = if (isTyped) typedText[index].toString() else char.toString()
+            val textAlpha = if (isTyped) 1f else 0.3f
+
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 4.dp)
+                modifier = Modifier.padding(horizontal = 6.dp)
             ) {
                 Text(
-                    text = char.toString(),
+                    text = displayText,
                     fontSize = 48.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = color
+                    fontWeight = FontWeight.ExtraBold,
+                    color = color.copy(alpha = textAlpha)
                 )
                 Box(
                     modifier = Modifier
                         .width(40.dp)
-                        .height(4.dp)
-                        .background(color, RoundedCornerShape(2.dp))
+                        .height(6.dp)
+                        .background(color, RoundedCornerShape(3.dp))
                 )
             }
         }
@@ -159,28 +290,30 @@ fun WordDisplay(targetWord: String, typedText: String) {
 
 @Composable
 fun KidKeyboard(
+    keys: List<String>,
     onKeyClick: (String) -> Unit,
-    allowedChars: List<String>
+    targetChar: String,
+    showHint: Boolean
 ) {
-    val alphabet = listOf(
-        listOf("آ", "ب", "پ", "ت", "ث"),
-        listOf("ج", "چ", "ح", "خ", "د"),
-        listOf("ذ", "ر", "ز", "ژ", "س")
-    )
+    // Layout keys in 2 rows
+    val rows = keys.chunked((keys.size + 1) / 2)
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        alphabet.forEach { row ->
+        rows.forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
             ) {
                 row.forEach { char ->
-                    KeyButton(char = char, onClick = { onKeyClick(char) })
+                    val isHighlighted = showHint && char == targetChar
+                    KeyButton(
+                        char = char,
+                        onClick = { onKeyClick(char) },
+                        isHighlighted = isHighlighted
+                    )
                 }
             }
         }
@@ -188,21 +321,32 @@ fun KidKeyboard(
 }
 
 @Composable
-fun KeyButton(char: String, onClick: () -> Unit) {
+fun KeyButton(char: String, onClick: () -> Unit, isHighlighted: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition()
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isHighlighted) 1.2f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
     Surface(
         modifier = Modifier
-            .size(60.dp)
+            .size(64.dp)
+            .graphicsLayer(scaleX = scale, scaleY = scale)
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        color = MangoOrange,
-        shadowElevation = 4.dp
+        shape = RoundedCornerShape(16.dp),
+        color = if (isHighlighted) Color.Yellow else MangoOrange,
+        shadowElevation = if (isHighlighted) 8.dp else 4.dp
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = char,
-                fontSize = 28.sp,
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = if (isHighlighted) MangoOrange else Color.White
             )
         }
     }
