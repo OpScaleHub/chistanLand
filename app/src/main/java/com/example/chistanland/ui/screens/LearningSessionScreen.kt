@@ -3,6 +3,7 @@ package com.example.chistanland.ui.screens
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -27,6 +29,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -93,8 +96,7 @@ fun LearningSessionScreen(
                     showSuccessFestival = false
                 }
                 is LearningViewModel.UiEvent.LevelDown -> {
-                    levelDownY.animateTo(300f, animationSpec = tween(1000, easing = LinearOutSlowInEasing))
-                    levelDownY.snapTo(0f)
+                    // انیمیشن ملایم پایین آمدن برای خطای تکراری (اختیاری)
                 }
                 is LearningViewModel.UiEvent.StartReviewSession -> {}
             }
@@ -108,7 +110,6 @@ fun LearningSessionScreen(
 
     val item = currentItem!!
     
-    // شناسایی دقیق هدف تایپ (کلمه برای حروف، خود نشانه برای اعداد)
     val targetFullString = remember(item) {
         if (item.category == "NUMBER") item.character else item.word
     }
@@ -157,9 +158,7 @@ fun LearningSessionScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer { translationY = levelDownY.value },
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.Bottom
                 ) {
@@ -169,7 +168,7 @@ fun LearningSessionScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // نمایش کارت تصویر/نشانه
+                // Word/Item Card with IMAGE
                 WordCard(
                     item = item,
                     onPlaySound = { viewModel.startLearning(item) },
@@ -178,7 +177,6 @@ fun LearningSessionScreen(
 
                 Spacer(modifier = Modifier.height(40.dp))
 
-                // نمایش حروف یا رقم هدف
                 WordDisplay(
                     targetWord = targetFullString,
                     typedText = typedText,
@@ -242,6 +240,11 @@ fun SuccessFestivalOverlay() {
 
 @Composable
 fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val imageResId = remember(item.imageUrl) {
+        context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName)
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "wordCard")
     val floatAnim by infiniteTransition.animateFloat(
         initialValue = -8f,
@@ -254,24 +257,40 @@ fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () ->
 
     Card(
         modifier = modifier
-            .sizeIn(minWidth = 200.dp, minHeight = 200.dp, maxWidth = 260.dp, maxHeight = 260.dp)
+            .sizeIn(minWidth = 240.dp, minHeight = 260.dp, maxWidth = 280.dp, maxHeight = 300.dp)
             .graphicsLayer { translationY = floatAnim }
             .clickable { onPlaySound() }
             .shadow(20.dp, RoundedCornerShape(48.dp)),
         shape = RoundedCornerShape(48.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(16.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = if (item.category == "NUMBER") "🔢" else "🌟", fontSize = 64.sp)
+                if (imageResId != 0) {
+                    Image(
+                        painter = painterResource(id = imageResId),
+                        contentDescription = item.word,
+                        modifier = Modifier.size(120.dp).clip(RoundedCornerShape(24.dp))
+                    )
+                } else {
+                    Text(text = if (item.category == "NUMBER") "🔢" else "🌟", fontSize = 64.sp)
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 Text(
-                    text = if (item.category == "NUMBER") item.word else item.word, 
-                    fontSize = 42.sp, 
+                    text = item.word, 
+                    fontSize = 36.sp, 
                     fontWeight = FontWeight.Black, 
                     color = if (item.category == "NUMBER") MangoOrange else SkyBlue
                 )
+                
                 Spacer(modifier = Modifier.height(8.dp))
-                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "پخش صدا", tint = MangoOrange, modifier = Modifier.size(32.dp))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = MangoOrange, modifier = Modifier.size(24.dp))
+                    Text("بشنو", color = MangoOrange, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
             }
         }
     }

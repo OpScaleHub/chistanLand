@@ -37,7 +37,7 @@ import com.example.chistanland.ui.theme.*
 fun IslandMapScreen(
     viewModel: LearningViewModel,
     onStartItem: (LearningItem) -> Unit,
-    onStartReview: () -> Unit,
+    onStartReview: (List<LearningItem>) -> Unit, // تغییر در اینجا
     onOpenParentPanel: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -116,7 +116,7 @@ fun SagaMap(
     items: List<LearningItem>,
     category: String,
     onStartItem: (LearningItem) -> Unit,
-    onStartReview: () -> Unit
+    onStartReview: (List<LearningItem>) -> Unit // تغییر در اینجا
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -141,13 +141,16 @@ fun SagaMap(
                     )
                 }
 
-                // شهربازی فقط برای دسته حروف الفبا و بعد از هر ۳ آیتم
                 if (category == "ALPHABET" && (index + 1) % 3 == 0 && index < items.size - 1) {
                     val reviewLocked = !item.isMastered
                     AmusementParkNode(
                         isLocked = reviewLocked,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                        onClick = onStartReview
+                        onClick = { 
+                            // فقط آیتم‌هایی که تا قبل از این شهربازی هستند برای مرور ارسال می‌شوند
+                            val allowedItems = items.take(index + 1)
+                            onStartReview(allowedItems) 
+                        }
                     )
                 }
             }

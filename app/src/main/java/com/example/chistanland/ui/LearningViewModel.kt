@@ -75,18 +75,10 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         val items = allItems.value
         if (items.isEmpty()) return "در حال بارگذاری اطلاعات..."
         val masteredTotal = items.count { it.isMastered }
-        return "فرزند شما تاکنون $masteredTotal نشانه را به خوبی یاد گرفته است."
+        return "فرزند شما تاکنون ${masteredTotal.toString().toPersianDigit()} نشانه را به خوبی یاد گرفته است."
     }
 
     fun startLearning(item: LearningItem, isReview: Boolean = false) {
-        // Validation: Ensure the item belongs to the currently selected category
-        val currentCat = _selectedCategory.value
-        if (currentCat != null && item.category != currentCat) {
-            // If there's a mismatch, we should ideally not start or fix it.
-            // But for now, let's enforce consistency.
-            _selectedCategory.value = item.category
-        }
-
         _isReviewMode.value = isReview
         _currentItem.value = item
         _typedText.value = ""
@@ -104,24 +96,28 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun startReviewSession() {
+    fun startReviewSession(allowedItems: List<LearningItem>? = null) {
         val currentCat = _selectedCategory.value ?: "ALPHABET"
         viewModelScope.launch {
-            // Get items to review ONLY for the current category
             val itemsToReview = repository.getItemsToReviewByCategory(currentCat).first()
             
-            // Priority 1: Items specifically marked for review in this category
-            // Priority 2: Mastered items in this category (to keep the session going)
-            val pool = if (itemsToReview.isNotEmpty()) {
-                itemsToReview
+            // اگر لیست آیتم‌های مجاز ارسال شده باشد، فقط از آن‌ها استفاده می‌کنیم
+            val basePool = if (allowedItems != null) {
+                itemsToReview.filter { it.id in allowedItems.map { it.id } }
             } else {
-                allItems.value.filter { it.category == currentCat && it.isMastered }
+                itemsToReview
             }
 
-            val item = pool.randomOrNull()
+            // اگر آیتمی برای مرور زمان‌بندی شده نبود، از کل آیتم‌های مجاز که حداقل یک بار یاد گرفته شده‌اند انتخاب کن
+            val pool = if (basePool.isNotEmpty()) {
+                basePool
+            } else {
+                val fallbackPool = allowedItems ?: allItems.value.filter { it.category == currentCat }
+                fallbackPool.filter { it.level > 1 }
+            }
             
-            if (item != null) {
-                startLearning(item, isReview = true)
+            pool.randomOrNull()?.let {
+                startLearning(it, isReview = true)
                 _uiEvent.emit(UiEvent.StartReviewSession)
             }
         }
@@ -141,7 +137,25 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             _keyboardKeys.value = persianDigits
         } else {
             val wordChars = item.word.map { it.toString() }.toSet()
-            val distractors = fullAlphabet.filterNot { wordChars.contains(it) }.shuffled().take(6)
+            
+            val currentIndex = allItems.value.indexOfFirst { it.id == item.id }
+            val knownOrPreviousItems = if (currentIndex >= 0) {
+                allItems.value.take(currentIndex + 1)
+            } else {
+                allItems.value.filter { it.level > 1 }
+            }
+            
+            val basePool = knownOrPreviousItems.map { it.character }.toSet()
+            
+            val futureItems = if (currentIndex >= 0) allItems.value.drop(currentIndex + 1) else emptyList()
+            val futureChars = futureItems.map { it.character }.toSet()
+            
+            val distractors = fullAlphabet
+                .filter { it in basePool || it !in futureChars }
+                .filterNot { wordChars.contains(it) }
+                .shuffled()
+                .take(6)
+                
             _keyboardKeys.value = (wordChars + distractors).shuffled()
         }
     }
@@ -182,6 +196,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             repository.updateProgress(item, isCorrect)
             if (isCorrect) {
                 _streak.value += 1
+                playSound("success_fest")
                 _uiEvent.emit(UiEvent.Success)
             }
             delay(2000)
@@ -192,10 +207,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     fun seedData() {
         viewModelScope.launch {
-            // ترتیب آموزشی نوین (Pedagogical Order) بر اساس نشانه‌های ۱ و ۲
-            // اما ارجاع به فایل‌های ثابت (Asset Persistence)
             val pedagogicalAlphabet = listOf(
-                // نشانه‌های ۱ (پایه)
                 LearningItem("a1", "آ", "آب", "audio_a1", "img_a1", "ALPHABET"),
                 LearningItem("a2", "ا", "اسب", "audio_a2", "img_a2", "ALPHABET"),
                 LearningItem("a3", "ب", "بابا", "audio_a3", "img_a3", "ALPHABET"),
@@ -220,7 +232,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 LearningItem("a8", "چ", "چای", "audio_a8", "img_a8", "ALPHABET"),
                 LearningItem("a15", "ژ", "ژله", "audio_a15", "img_a15", "ALPHABET"),
                 
-                // نشانه‌های ۲ (تخصصی و عربی)
                 LearningItem("a18", "ص", "صورت", "audio_a18", "img_a18", "ALPHABET"),
                 LearningItem("a12", "ذ", "ذرت", "audio_a12", "img_a12", "ALPHABET"),
                 LearningItem("a22", "ع", "عینک", "audio_a22", "img_a22", "ALPHABET"),

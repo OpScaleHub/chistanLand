@@ -18,16 +18,17 @@ class LearningRepository(private val learningDao: LearningDao) {
         if (isCorrect) {
             newLevel = (item.level + 1).coerceAtMost(5)
             nextReviewDelay = when (newLevel) {
-                1 -> TimeUnit.MINUTES.toMillis(10) // Immediate review for Level 1
-                2 -> TimeUnit.HOURS.toMillis(24)    // 1 Day
-                3 -> TimeUnit.DAYS.toMillis(4)     // 4 Days
-                4 -> TimeUnit.DAYS.toMillis(7)     // 1 Week
-                5 -> Long.MAX_VALUE                // Mastered (Long Term)
+                1 -> TimeUnit.MINUTES.toMillis(10) 
+                2 -> TimeUnit.HOURS.toMillis(24)    
+                3 -> TimeUnit.DAYS.toMillis(4)     
+                4 -> TimeUnit.DAYS.toMillis(7)     
+                5 -> Long.MAX_VALUE                
                 else -> 0
             }
         } else {
-            // Loss Aversion: Return to level 1 on error
-            newLevel = 1
+            // رویکرد مهربانانه: در صورت اشتباه، کودک جریمه سنگین نمی‌شود
+            // فقط در همان سطح می‌ماند تا دوباره تمرین کند
+            newLevel = item.level 
             nextReviewDelay = 0
         }
 
