@@ -4,36 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>چستان‌لند | الفبای ماجراجو</title>
+    <title>چستان‌لند | الفبای ماجراجو و قله اعداد</title>
 
     <!-- SEO & Social Media Meta Tags -->
     <meta name="description"
-        content="چستان‌لند: یک ماجراجویی شگفت‌انگیز برای یادگیری الفبای فارسی، مخصوص قهرمان‌های کوچک ۴ تا ۶ ساله. جایی که کلمات جوانه می‌زنند و دانش شکوفه می‌دهد.">
-    <meta name="keywords" content="آموزش الفبا, بازی آموزشی, کودکان, فارسی, یادگیری, چستان‌لند, ChistanLand">
-
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://chistan.land/"> <!-- Placeholder: Replace with actual URL -->
-    <meta property="og:title" content="چستان‌لند | سفر در جزیره‌های دانایی">
-    <meta property="og:description"
-        content="ماجراجویی تعاملی و صوتی برای آموزش الفبای فارسی به کودکان ۴ تا ۶ سال. با تایپ هوشمند، نقشه سفر و پنل هوشمند والدین.">
-    <meta property="og:image" content="https://chistan.land/social-preview.png">
-    <!-- Placeholder: Replace with actual image URL -->
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://chistan.land/"> <!-- Placeholder: Replace with actual URL -->
-    <meta property="twitter:title" content="چستان‌لند | الفبای ماجراجو">
-    <meta property="twitter:description"
-        content="از جزیره مه‌آلود تا قصر طلایی! چستان‌لند یادگیری الفبا را به یک بازی هیجان‌انگیز تبدیل می‌کند.">
-    <meta property="twitter:image" content="https://chistan.land/social-preview.png">
-    <!-- Placeholder: Replace with actual image URL -->
+        content="چستان‌لند: یک ماجراجویی شگفت‌انگیز برای یادگیری الفبا و اعداد فارسی، مخصوص قهرمان‌های کوچک ۴ تا ۶ ساله.">
+    <meta name="keywords" content="آموزش الفبا, آموزش اعداد, بازی آموزشی, کودکان, فارسی, چستان‌لند">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;400;700;900&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Vazirmatn', sans-serif;
+            scroll-behavior: smooth;
         }
 
         .bg-sky-blue {
@@ -48,12 +31,8 @@
             background-color: #FF8243;
         }
 
-        .bg-pastel-green {
-            background-color: #77DD77;
-        }
-
         .island-gradient {
-            background: linear-gradient(180deg, #87CEEB 0%, #FFFFFF 100%);
+            background: linear-gradient(180deg, #E3F2FD 0%, #FFFFFF 100%);
         }
 
         .hero-float {
@@ -61,17 +40,19 @@
         }
 
         @keyframes float {
-            0% {
+
+            0%,
+            100% {
                 transform: translateY(0px);
             }
 
             50% {
                 transform: translateY(-20px);
             }
+        }
 
-            100% {
-                transform: translateY(0px);
-            }
+        .screenshot-shadow {
+            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.25), 0 30px 60px -30px rgba(0, 0, 0, 0.3);
         }
     </style>
 </head>
@@ -80,116 +61,128 @@
 
     <!-- Navigation -->
     <nav class="container mx-auto px-6 py-8 flex justify-between items-center">
-        <div class="text-3xl font-black text-blue-900">🏝️ چستان‌لند</div>
+        <div class="text-3xl font-black text-blue-900 flex items-center gap-2">
+            <span class="text-4xl">🏝️</span> چستان‌لند
+        </div>
+        <div class="hidden md:flex gap-8 font-bold text-blue-800">
+            <a href="#features" class="hover:text-mango">ویژگی‌ها</a>
+            <a href="#numbers" class="hover:text-mango">قله اعداد</a>
+            <a href="#parents" class="hover:text-mango">والدین</a>
+        </div>
         <a href="chistanland-latest.apk"
             class="bg-mango text-white px-6 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition-transform">
-            دریافت اپلیکیشن
+            دریافت APK
         </a>
     </nav>
 
     <!-- Hero Section -->
-    <header class="container mx-auto px-6 py-16 text-center">
-        <div class="hero-float inline-block mb-8 text-8xl">🌴</div>
-        <h1 class="text-5xl md:text-7xl font-black text-blue-900 mb-6 leading-tight">
-            سفر در <span class="text-mango">جزیره‌های دانایی</span>
-        </h1>
-        <p class="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-12">
-            یک ماجراجویی شگفت‌انگیز برای یادگیری الفبای فارسی، مخصوص قهرمان‌های کوچک <strong>۴ تا ۶ ساله</strong>. اینجا
-            کلمات جوانه می‌زنند، دانش شکوفه می‌دهد و یادگیری به یک بازی هیجان‌انگیز تبدیل می‌شود.
-        </p>
-        <div class="flex flex-col md:flex-row justify-center gap-4">
-            <a href="chistanland-latest.apk"
-                class="bg-blue-900 text-white px-10 py-5 rounded-2xl text-xl font-black shadow-2xl hover:bg-blue-800 transition-all">
-                📥 دانلود مستقیم نسخه اندروید (APK)
-            </a>
+    <header class="container mx-auto px-6 py-12 flex flex-col lg:flex-row items-center gap-12">
+        <div class="lg:w-1/2 text-center lg:text-right">
+            <div class="hero-float inline-block mb-6 text-7xl">✨</div>
+            <h1 class="text-5xl md:text-7xl font-black text-blue-900 mb-6 leading-tight">
+                سفر در <span class="text-mango">جزیره‌های دانایی</span>
+            </h1>
+            <p class="text-xl md:text-2xl text-slate-600 mb-10 leading-relaxed">
+                یک ماجراجویی شگفت‌انگیز برای یادگیری الفبا و اعداد فارسی، مخصوص قهرمان‌های کوچک <strong>۴ تا ۶
+                    ساله</strong>. جایی که یادگیری به یک بازی هیجان‌انگیز تبدیل می‌شود.
+            </p>
+            <div class="flex flex-wrap gap-4 justify-center lg:justify-start">
+                <a href="chistanland-latest.apk"
+                    class="bg-blue-900 text-white px-8 py-4 rounded-2xl text-xl font-black shadow-2xl hover:bg-blue-800 transition-all">
+                    📥 دانلود مستقیم برنامه
+                </a>
+            </div>
+        </div>
+        <div class="lg:w-1/2 relative">
+            <!-- Mockup for Main Home Screenshot -->
+            <div
+                class="relative z-10 screenshot-shadow rounded-[3rem] border-[12px] border-slate-900 overflow-hidden bg-white max-w-[320px] mx-auto">
+                <img src="home-screen.png" alt="صفحه اصلی چستان‌لند" class="w-full">
+                <!-- Replace with your uploaded screenshot URL -->
+            </div>
+            <div class="absolute -bottom-10 -right-10 text-9xl z-0 opacity-20 hero-float">🌴</div>
         </div>
     </header>
 
-    <!-- Features -->
-    <section class="py-24 bg-white/70 backdrop-blur-md">
-        <div class="container mx-auto px-6">
-            <h2 class="text-4xl font-black text-center text-blue-900 mb-16">از جزیره مه‌آلود تا قصر طلایی</h2>
-            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <!-- Feature 1 -->
-                <div class="text-center p-8 rounded-3xl bg-white shadow-xl hover:shadow-2xl transition-shadow">
-                    <div class="text-5xl mb-4">🗺️</div>
-                    <h3 class="text-2xl font-bold text-blue-900 mb-4">نقشه سفر</h3>
-                    <p class="text-slate-600">یک مسیر جذاب و بصری که پیشرفت کودک را در جزایر مختلف الفبا به تصویر
-                        می‌کشد.</p>
-                </div>
-                <!-- Feature 2 -->
-                <div class="text-center p-8 rounded-3xl bg-white shadow-xl hover:shadow-2xl transition-shadow">
-                    <div class="text-5xl mb-4">🎹</div>
-                    <h3 class="text-2xl font-bold text-blue-900 mb-4">تایپ هوشمند</h3>
-                    <p class="text-slate-600">کیبورد اختصاصی که فقط حروف مورد نیاز را نشان می‌دهد تا کودک بر یادگیری
-                        متمرکز بماند.</p>
-                </div>
-                <!-- Feature 3 -->
-                <div class="text-center p-8 rounded-3xl bg-white shadow-xl hover:shadow-2xl transition-shadow">
-                    <div class="text-5xl mb-4">🌱</div>
-                    <h3 class="text-2xl font-bold text-blue-900 mb-4">یادگیری تطبیقی</h3>
-                    <p class="text-slate-600">سیستم لایتنر هوشمند که با تکرار فاصله‌دار، کلمات را در حافظه بلندمدت کودک
-                        تثبیت می‌کند.</p>
-                </div>
-                <!-- Feature 4 -->
-                <div class="text-center p-8 rounded-3xl bg-white shadow-xl hover:shadow-2xl transition-shadow">
-                    <div class="text-5xl mb-4">📊</div>
-                    <h3 class="text-2xl font-bold text-blue-900 mb-4">پنل هوشمند والدین</h3>
-                    <p class="text-slate-600">گزارش‌های پیشرفت به زبان ساده و روایی، تا شما در جریان مسیر رشد فرزندتان
-                        باشید.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Showcase -->
-    <section class="container mx-auto px-6 py-24">
-        <div class="bg-blue-900 rounded-[3rem] p-12 md:p-20 text-white overflow-hidden relative">
-            <div class="md:w-1/2 relative z-10">
-                <h2 class="text-4xl md:text-5xl font-black mb-8">طراحی صوتی-محور</h2>
-                <p class="text-xl opacity-80 mb-10 leading-relaxed">
-                    در چستان‌لند، هیچ کودکی تنها نمی‌ماند. تمام دستورالعمل‌ها به صورت صوتی و با لحنی تشویقی ارائه
-                    می‌شوند تا استقلال کامل کودک در یادگیری تضمین شود. کودک شما برای پیمایش در برنامه، نیازی به سواد
-                    خواندن ندارد.
+    <!-- Numbers Section -->
+    <section id="numbers" class="py-24 bg-mango/5">
+        <div class="container mx-auto px-6 flex flex-col lg:flex-row-reverse items-center gap-16">
+            <div class="lg:w-1/2">
+                <h2 class="text-4xl md:text-5xl font-black text-blue-900 mb-8">فتح <span class="text-mango">قله
+                        اعداد</span> با حباب‌های جادویی</h2>
+                <p class="text-xl text-slate-600 mb-8 leading-relaxed">
+                    در چستان‌لند، اعداد فقط نماد نیستند! با استفاده از حباب‌های کوانتومی، کودک شما مفهوم «مقدار» را
+                    به صورت بصری و لمسی درک می‌کند. هر عدد، داستانی از تعداد حباب‌های درخشان است که به دور کارت‌ها به
+                    پرواز در می‌آیند.
                 </p>
-                <ul class="space-y-4 text-lg">
-                    <li class="flex items-center gap-4">
-                        <span
-                            class="bg-mango text-white font-bold w-8 h-8 flex items-center justify-center rounded-full">✓</span>
-                        <span>راهنمای صوتی در تمام مراحل</span>
-                    </li>
-                    <li class="flex items-center gap-4">
-                        <span
-                            class="bg-mango text-white font-bold w-8 h-8 flex items-center justify-center rounded-full">✓</span>
-                        <span>انیمیشن‌های راهنمای تصویری خودکار</span>
-                    </li>
-                    <li class="flex items-center gap-4">
-                        <span
-                            class="bg-mango text-white font-bold w-8 h-8 flex items-center justify-center rounded-full">✓</span>
-                        <span>صدای Phonics استاندارد برای هر حرف</span>
-                    </li>
-                </ul>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-md border-r-4 border-mango">
+                        <span class="text-2xl block mb-2">🔮</span>
+                        <span class="font-bold">درک بصری مقدار</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-md border-r-4 border-mango">
+                        <span class="text-2xl block mb-2">🔢</span>
+                        <span class="font-bold">شمارش منظم و آرام</span>
+                    </div>
+                </div>
             </div>
-            <div class="absolute left-[-10%] top-[-10%] opacity-10 text-[20rem] hero-float">🚢</div>
+            <div class="lg:w-1/2">
+                <!-- Mockup for Learning Session Screenshot -->
+                <div
+                    class="screenshot-shadow rounded-[3rem] border-[12px] border-slate-900 overflow-hidden bg-white max-w-[320px] mx-auto">
+                    <img src="learning-screen.png" alt="یادگیری اعداد" class="w-full">
+                    <!-- Replace with your uploaded screenshot URL -->
+                </div>
+            </div>
         </div>
     </section>
 
-    <!-- Offline First Section -->
-    <section class="py-24">
-        <div class="container mx-auto px-6 text-center">
-            <div class="text-6xl mb-6">🔒</div>
-            <h2 class="text-4xl font-black text-blue-900 mb-6">امنیت و دسترسی در اولویت است</h2>
-            <p class="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto">
-                ما چستان‌لند را با قابلیت استفاده آفلاین ساخته‌ایم تا یادگیری فرزندتان هیچ‌وقت متوقف نشود. با این
-                معماری، کودک شما بدون نیاز به اینترنت به تمامی محتواها دسترسی دارد؛ این یعنی هم خیالتان از بابت امنیت و
-                حریم خصوصی او راحت است و هم آموزش در هر زمان و مکانی ادامه می‌یابد.
-            </p>
+    <!-- Features Grid -->
+    <section id="features" class="py-24 bg-white">
+        <div class="container mx-auto px-6">
+            <h2 class="text-4xl font-black text-center text-blue-900 mb-16">ویژگی‌هایی که کودکان (و والدین) عاشقش
+                می‌شوند</h2>
+            <div class="grid md:grid-cols-3 gap-12">
+                <div class="text-center">
+                    <div
+                        class="w-20 h-20 bg-blue-100 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">
+                        🎹</div>
+                    <h3 class="text-2xl font-bold mb-4">تایپ هوشمند</h3>
+                    <p class="text-slate-600">کیبوردی که فقط حروف مورد نیاز را نشان می‌دهد تا کودک هرگز سردرگم نشود.</p>
+                </div>
+                <div class="text-center">
+                    <div
+                        class="w-20 h-20 bg-green-100 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">
+                        🌱</div>
+                    <h3 class="text-2xl font-bold mb-4">باغچه یادگیری</h3>
+                    <p class="text-slate-600">با هر پاسخ درست، گیاهی در برنامه رشد می‌کند؛ نمادی بصری از تلاش و پیشرفت
+                        فرزند شما.</p>
+                </div>
+                <div class="text-center">
+                    <div
+                        class="w-20 h-20 bg-orange-100 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">
+                        🔊</div>
+                    <h3 class="text-2xl font-bold mb-4">صدای همراه</h3>
+                    <p class="text-slate-600">تمام مراحل صوتی هستند. کودک شما بدون نیاز به سواد خواندن، کاملاً مستقل
+                        بازی می‌کند.</p>
+                </div>
+            </div>
         </div>
     </section>
 
     <!-- Footer -->
-    <footer class="container mx-auto px-6 py-12 text-center text-slate-500">
-        <p>© ۱۴۰۳ چستان‌لند - طراحی شده برای آینده‌سازان ایران با ❤️</p>
+    <footer class="bg-blue-900 text-white py-16">
+        <div class="container mx-auto px-6 text-center">
+            <div class="text-4xl font-black mb-8">🏝️ چستان‌لند</div>
+            <p class="text-xl opacity-70 mb-10">آماده‌اید تا ماجراجویی فرزندتان را شروع کنید؟</p>
+            <a href="chistanland-latest.apk"
+                class="bg-mango text-white px-10 py-4 rounded-full font-bold text-xl inline-block shadow-lg hover:scale-105 transition-transform">
+                همین حالا دانلود کنید
+            </a>
+            <div class="mt-20 pt-8 border-t border-white/10 text-sm opacity-50">
+                © ۱۴۰۳ چستان‌لند - طراحی شده برای آینده‌سازان ایران با ❤️
+            </div>
+        </div>
     </footer>
 
 </body>
