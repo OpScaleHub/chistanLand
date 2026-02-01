@@ -61,10 +61,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         object StartReviewSession : UiEvent()
     }
 
-    private val fullAlphabet = listOf(
-        "آ", "ا", "ب", "پ", "ت", "ث", "ج", "چ", "ح", "خ", "د", "ذ", "ر", "ز", "ژ", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ک", "گ", "ل", "م", "ن", "و", "ه", "ی"
-    )
-    
     private val persianDigits = listOf("۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹")
 
     fun selectCategory(category: String?) {
@@ -114,8 +110,9 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 fallbackPool.filter { it.level > 1 || it.isMastered }
             }
             
-            pool.randomOrNull()?.let {
-                startLearning(it, isReview = true)
+            val selected = pool.randomOrNull()
+            if (selected != null) {
+                startLearning(selected, isReview = true)
                 _uiEvent.emit(UiEvent.StartReviewSession)
                 onReady()
             }
@@ -137,25 +134,21 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         } else {
             val wordChars = item.word.map { it.toString() }.toSet()
             
-            val currentIndex = allItems.value.indexOfFirst { it.id == item.id }
-            val knownOrPreviousItems = if (currentIndex >= 0) {
-                allItems.value.take(currentIndex + 1)
+            // پیدا کردن تمام حروفی که تا این مرحله باز شده‌اند
+            val currentItems = filteredItems.value
+            val currentIndex = currentItems.indexOfFirst { it.id == item.id }
+            val accessibleLetters = if (currentIndex >= 0) {
+                currentItems.take(currentIndex + 1).map { it.character }.toSet()
             } else {
-                allItems.value.filter { it.level > 1 }
+                // اگر در حالت مرور بودیم، حروفی که قبلاً حداقل یک بار با موفقیت دیده شده‌اند
+                currentItems.filter { it.level > 1 || it.isMastered }.map { it.character }.toSet()
             }
             
-            val basePool = knownOrPreviousItems.map { it.character }.toSet()
+            // ترکیب حروف کلمه فعلی با حروف قبلاً آموخته شده
+            val totalPool = (wordChars + accessibleLetters).toList().shuffled()
             
-            val futureItems = if (currentIndex >= 0) allItems.value.drop(currentIndex + 1) else emptyList()
-            val futureChars = futureItems.map { it.character }.toSet()
-            
-            val distractors = fullAlphabet
-                .filter { it in basePool || it !in futureChars }
-                .filterNot { wordChars.contains(it) }
-                .shuffled()
-                .take(6)
-                
-            _keyboardKeys.value = (wordChars + distractors).shuffled()
+            // محدود کردن تعداد کلیدها برای جلوگیری از شلوغی (حداکثر ۱۲ کلید)
+            _keyboardKeys.value = totalPool.take(12).shuffled()
         }
     }
 
@@ -206,60 +199,37 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     fun seedData() {
         viewModelScope.launch {
-            val pedagogicalAlphabet = listOf(
-                LearningItem("a1", "آ", "آب", "audio_a1", "https://cdn-icons-png.flaticon.com/512/3105/3105807.png", "ALPHABET"),
-                LearningItem("a2", "ا", "اسب", "audio_a2", "https://cdn-icons-png.flaticon.com/512/1998/1998682.png", "ALPHABET"),
-                LearningItem("a3", "ب", "بابا", "audio_a3", "https://cdn-icons-png.flaticon.com/512/4139/4139162.png", "ALPHABET"),
-                LearningItem("a11", "د", "درخت", "audio_a11", "https://cdn-icons-png.flaticon.com/512/489/489969.png", "ALPHABET"),
-                LearningItem("a29", "م", "موز", "audio_a29", "https://cdn-icons-png.flaticon.com/512/2909/2909808.png", "ALPHABET"),
-                LearningItem("a16", "س", "سیب", "audio_a16", "https://cdn-icons-png.flaticon.com/512/415/415733.png", "ALPHABET"),
-                LearningItem("a5", "ت", "توت", "audio_a5", "https://cdn-icons-png.flaticon.com/512/1135/1135540.png", "ALPHABET"),
-                LearningItem("a13", "ر", "روباه", "audio_a13", "https://cdn-icons-png.flaticon.com/512/1998/1998631.png", "ALPHABET"),
-                LearningItem("a30", "ن", "نان", "audio_a30", "https://cdn-icons-png.flaticon.com/512/2965/2965568.png", "ALPHABET"),
-                LearningItem("a14", "ز", "زنبور", "audio_a14", "https://cdn-icons-png.flaticon.com/512/2909/2909772.png", "ALPHABET"),
-                LearningItem("a17", "ش", "شتر", "audio_a17", "https://cdn-icons-png.flaticon.com/512/1998/1998592.png", "ALPHABET"),
-                LearningItem("a26", "ک", "کتاب", "audio_a26", "https://cdn-icons-png.flaticon.com/512/3389/3389081.png", "ALPHABET"),
-                LearningItem("a31", "و", "ورزش", "audio_a31", "https://cdn-icons-png.flaticon.com/512/2964/2964514.png", "ALPHABET"),
-                LearningItem("a4", "پ", "پا", "audio_a4", "https://cdn-icons-png.flaticon.com/512/3063/3063822.png", "ALPHABET"),
-                LearningItem("a27", "گ", "گاو", "audio_a27", "https://cdn-icons-png.flaticon.com/512/1998/1998610.png", "ALPHABET"),
-                LearningItem("a24", "ف", "فیل", "audio_a24", "https://cdn-icons-png.flaticon.com/512/1998/1998616.png", "ALPHABET"),
-                LearningItem("a10", "خ", "خرگوش", "audio_a10", "https://cdn-icons-png.flaticon.com/512/1998/1998762.png", "ALPHABET"),
-                LearningItem("a25", "ق", "قایق", "audio_a25", "https://cdn-icons-png.flaticon.com/512/2964/2964551.png", "ALPHABET"),
-                LearningItem("a28", "ل", "لباس", "audio_a28", "https://cdn-icons-png.flaticon.com/512/3534/3534312.png", "ALPHABET"),
-                LearningItem("a7", "ج", "جوجه", "audio_a7", "https://cdn-icons-png.flaticon.com/512/1998/1998642.png", "ALPHABET"),
-                LearningItem("a32", "ه", "هلو", "audio_a32", "https://cdn-icons-png.flaticon.com/512/2909/2909825.png", "ALPHABET"),
-                LearningItem("a8", "چ", "چای", "audio_a8", "https://cdn-icons-png.flaticon.com/512/3054/3054813.png", "ALPHABET"),
-                LearningItem("a15", "ژ", "ژله", "audio_a15", "https://cdn-icons-png.flaticon.com/512/184/184545.png", "ALPHABET"),
-                LearningItem("a18", "ص", "صورت", "audio_a18", "https://cdn-icons-png.flaticon.com/512/4139/4139153.png", "ALPHABET"),
-                LearningItem("a12", "ذ", "ذرت", "audio_a12", "https://cdn-icons-png.flaticon.com/512/2909/2909795.png", "ALPHABET"),
-                LearningItem("a22", "ع", "عینک", "audio_a22", "https://cdn-icons-png.flaticon.com/512/1253/1253335.png", "ALPHABET"),
-                LearningItem("a6", "ث", "ثروت", "audio_a6", "https://cdn-icons-png.flaticon.com/512/2953/2953361.png", "ALPHABET"),
-                LearningItem("a9", "ح", "حلزون", "audio_a9", "https://cdn-icons-png.flaticon.com/512/1998/1998791.png", "ALPHABET"),
-                LearningItem("a19", "ض", "ضامن", "audio_a19", "https://cdn-icons-png.flaticon.com/512/2312/2312521.png", "ALPHABET"),
-                LearningItem("a20", "ط", "طوطی", "audio_a20", "https://cdn-icons-png.flaticon.com/512/1998/1998733.png", "ALPHABET"),
-                LearningItem("a23", "غ", "غذا", "audio_a23", "https://cdn-icons-png.flaticon.com/512/2737/2737034.png", "ALPHABET"),
-                LearningItem("a21", "ظ", "ظرف", "audio_a21", "https://cdn-icons-png.flaticon.com/512/184/184535.png", "ALPHABET"),
-                LearningItem("a33", "ی", "یخ", "audio_a33", "https://cdn-icons-png.flaticon.com/512/2910/2910006.png", "ALPHABET")
+            // ترتیب آموزشی تجمعی (هر مرحله فقط یک حرف جدید که در کلمه همان مرحله استفاده شده)
+            val cumulativeAlphabet = listOf(
+                LearningItem("a1", "آ", "آ", "audio_a1", "img_a1", "ALPHABET"),
+                LearningItem("a2", "ب", "آب", "audio_a2", "img_a2", "ALPHABET"), // آ قبلی + ب جدید
+                LearningItem("a3", "ا", "بابا", "audio_a3", "img_a3", "ALPHABET"), // ب قبلی + ا جدید
+                LearningItem("a4", "د", "باد", "audio_a4", "img_a4", "ALPHABET"), // ب، ا قبلی + د جدید
+                LearningItem("a5", "م", "بام", "audio_a5", "img_a5", "ALPHABET"), // ب، ا قبلی + م جدید
+                LearningItem("a6", "س", "سام", "audio_a6", "img_a6", "ALPHABET"), // ا، م قبلی + س جدید
+                LearningItem("a7", "ن", "نان", "audio_a7", "img_a7", "ALPHABET"), // ا قبلی + ن جدید
+                LearningItem("a8", "ر", "مار", "audio_a8", "img_a8", "ALPHABET"), // م، ا قبلی + ر جدید
+                LearningItem("a9", "ت", "دست", "audio_a9", "img_a9", "ALPHABET"), // د، س قبلی + ت جدید
+                LearningItem("a10", "و", "مو", "audio_a10", "img_a10", "ALPHABET"), // م قبلی + و جدید
+                LearningItem("a11", "ی", "سیب", "audio_a11", "img_a11", "ALPHABET"), // س، ب قبلی + ی جدید
+                LearningItem("a12", "ز", "سرباز", "audio_a12", "img_a12", "ALPHABET"), // س، ر، ب، ا قبلی + ز جدید
+                LearningItem("a13", "ش", "تراش", "audio_a13", "img_a13", "ALPHABET"), // ت، ر، ا قبلی + ش جدید
+                LearningItem("a14", "ک", "کتاب", "audio_a14", "img_a14", "ALPHABET"), // ت، ا، ب قبلی + ک جدید
+                LearningItem("a15", "گ", "سگ", "audio_a15", "img_a15", "ALPHABET"), // س قبلی + گ جدید
+                LearningItem("a16", "ف", "برف", "audio_a16", "img_a16", "ALPHABET"), // ب، ر قبلی + ف جدید
+                LearningItem("a17", "خ", "شاخ", "audio_a17", "img_a17", "ALPHABET"), // ش، ا قبلی + خ جدید
+                LearningItem("a18", "ق", "قایق", "audio_a18", "img_a18", "ALPHABET"), // ا، ی قبلی + ق جدید
+                LearningItem("a19", "ل", "لباس", "audio_a19", "img_a19", "ALPHABET"), // ب، ا، س قبلی + ل جدید
+                LearningItem("a20", "ج", "تاج", "audio_a20", "img_a20", "ALPHABET"), // ت، ا قبلی + ج جدید
+                LearningItem("a21", "چ", "چای", "audio_a21", "img_a21", "ALPHABET"), // ا، ی قبلی + چ جدید
+                LearningItem("a22", "ه", "کوه", "audio_a22", "img_a22", "ALPHABET")  // ک، و قبلی + ه جدید
             )
             
-            val numberImages = listOf(
-                "https://cdn-icons-png.flaticon.com/512/3570/3570095.png",
-                "https://cdn-icons-png.flaticon.com/512/3570/3570096.png",
-                "https://cdn-icons-png.flaticon.com/512/3570/3570097.png",
-                "https://cdn-icons-png.flaticon.com/512/3570/3570098.png",
-                "https://cdn-icons-png.flaticon.com/512/3570/3570099.png",
-                "https://cdn-icons-png.flaticon.com/512/3570/3570100.png",
-                "https://cdn-icons-png.flaticon.com/512/3570/3570101.png",
-                "https://cdn-icons-png.flaticon.com/512/3570/3570102.png",
-                "https://cdn-icons-png.flaticon.com/512/3570/3570103.png",
-                "https://cdn-icons-png.flaticon.com/512/3570/3570104.png"
-            )
-
             val numberItems = (0..9).map { 
-                LearningItem("n$it", it.toString().toPersianDigit(), it.toPersianWord(), "audio_n$it", numberImages[it], "NUMBER")
+                LearningItem("n$it", it.toString().toPersianDigit(), it.toPersianWord(), "audio_n$it", "img_n$it", "NUMBER") 
             }
             
-            repository.insertInitialData(pedagogicalAlphabet + numberItems)
+            repository.insertInitialData(cumulativeAlphabet + numberItems)
         }
     }
 
