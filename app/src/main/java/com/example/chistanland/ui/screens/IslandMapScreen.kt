@@ -1,6 +1,6 @@
 package com.example.chistanland.ui.screens
 
-import androidx.compose.animation.*
+import android.annotation.SuppressLint
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -23,12 +23,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -129,10 +125,11 @@ fun EmptyMapState(onSeed: () -> Unit) {
     }
 }
 
+@SuppressLint("DiscouragedApi")
 @Composable
 fun FinalVictoryOverlay(onClose: () -> Unit) {
     val context = LocalContext.current
-    val resId = context.resources.getIdentifier("success_fest_anim", "raw", context.packageName)
+    val resId = remember { context.resources.getIdentifier("success_fest_anim", "raw", context.packageName) }
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(if (resId != 0) resId else 1))
     
     Box(
@@ -174,11 +171,11 @@ fun MapHeader(category: String, onOpenParentPanel: () -> Unit, onBack: () -> Uni
 
 @Composable
 fun SagaMap(items: List<LearningItem>, category: String, onStartItem: (LearningItem) -> Unit, onStartReview: (List<LearningItem>) -> Unit) {
-    val firstLockedIndex = items.indexOfFirst { !it.isMastered }.let { if (it == -1) items.size - 1 else it }
+    val firstLockedIndex = remember(items) { items.indexOfFirst { !it.isMastered }.let { if (it == -1) items.size - 1 else it } }
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = (firstLockedIndex - 1).coerceAtLeast(0))
 
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 120.dp, top = 20.dp)) {
-        itemsIndexed(items) { index, item ->
+        itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
             val isLocked = index > 0 && !items[index - 1].isMastered
             val isEven = index % 2 == 0
             
@@ -225,6 +222,7 @@ fun PathConnection(isEven: Boolean, category: String) {
     }
 }
 
+@SuppressLint("DiscouragedApi")
 @Composable
 fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "island")
@@ -267,7 +265,7 @@ fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modif
             if (!isLocked) {
                 Surface(
                     modifier = Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp).size(36.dp),
-                    shape = CircleShape, color = if (item.category == "NUMBER") DeepOcean else DeepOcean, border = BorderStroke(2.dp, Color.White)
+                    shape = CircleShape, color = DeepOcean, border = BorderStroke(2.dp, Color.White)
                 ) { Box(contentAlignment = Alignment.Center) { Text(item.character, color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp) } }
             }
             if (item.isMastered) Icon(Icons.Default.Star, null, tint = MangoOrange, modifier = Modifier.size(32.dp).align(Alignment.TopStart).offset(x = (-6).dp, y = (-6).dp).rotate(-15f))
