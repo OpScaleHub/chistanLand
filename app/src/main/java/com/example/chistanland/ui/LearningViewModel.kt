@@ -48,6 +48,10 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val _uiEvent = MutableSharedFlow<UiEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
 
+    // Avatar States: IDLE, SPEAKING, HAPPY, THINKING
+    private val _avatarState = MutableStateFlow("IDLE")
+    val avatarState: StateFlow<String> = _avatarState.asStateFlow()
+
     private val _isReviewMode = MutableStateFlow(false)
     val isReviewMode: StateFlow<Boolean> = _isReviewMode.asStateFlow()
 
@@ -68,6 +72,24 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _selectedCategory.value = category
     }
 
+    fun getParentNarrative(): String {
+        val items = allItems.value
+        if (items.isEmpty()) return "در حال بارگذاری اطلاعات..."
+        
+        val masteredAlphabet = items.count { it.isMastered && it.category == "ALPHABET" }
+        val masteredNumbers = items.count { it.isMastered && it.category == "NUMBER" }
+        val totalItems = items.size
+        val masteredTotal = masteredAlphabet + masteredNumbers
+        
+        return when {
+            masteredTotal == totalItems -> "فوق‌العاده است! فرزند شما تمام حروف الفبا و اعداد را یاد گرفته است. حالا او می‌تواند کلمات ساده را در محیط اطرافش بخواند."
+            masteredAlphabet > 15 -> "فرزند شما تسلط خیلی خوبی روی حروف الفبا پیدا کرده است. پیشنهاد می‌کنیم با هم کلمات بیشتری بسازید."
+            masteredNumbers == 10 -> "تبریک! فرزند شما تمام اعداد ۰ تا ۹ را یاد گرفته است. حالا می‌توانید با هم بازی‌های شمارشی انجام دهید."
+            masteredTotal > 5 -> "یادگیری با موفقیت ادامه دارد. فرزند شما تاکنون $masteredTotal نشانه را به خوبی یاد گرفته است."
+            else -> "فرزند شما در حال برداشتن اولین قدم‌های خود در دنیای شگفت‌انگیز حروف و اعداد است. همراهی شما بزرگترین مشوق اوست."
+        }
+    }
+
     fun startLearning(item: LearningItem) {
         _isReviewMode.value = false
         _currentItem.value = item
@@ -75,7 +97,28 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _charStatus.value = emptyList()
         hasErrorInCurrentWord = false
         generateAdaptiveKeyboard(item)
-        playSound(item.phonetic)
+        
+        viewModelScope.launch {
+            _avatarState.value = "SPEAKING"
+            playSound("inst_type_word") // صدایی که می‌گوید: "حالا این کلمه رو برام بنویس"
+            delay(1500)
+            playSound(item.phonetic)
+            delay(1000)
+            _avatarState.value = "IDLE"
+        }
+    }
+
+    fun playHintInstruction() {
+        viewModelScope.launch {
+            val current = _currentItem.value ?: return@launch
+            val targetChar = if (current.category == "NUMBER") current.character else current.word.getOrNull(_typedText.value.length)?.toString() ?: ""
+            
+            _avatarState.value = "SPEAKING"
+            // منطق پخش صدا: "بگرد و حرف [Target] رو پیدا کن"
+            playSound("inst_find_char") 
+            delay(1000)
+            _avatarState.value = "IDLE"
+        }
     }
 
     fun startReviewSession() {
@@ -88,7 +131,13 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             _charStatus.value = emptyList()
             hasErrorInCurrentWord = false
             generateAdaptiveKeyboard(itemToReview)
-            playSound("carnival_music")
+            
+            viewModelScope.launch {
+                _avatarState.value = "HAPPY"
+                playSound("carnival_music")
+                delay(2000)
+                _avatarState.value = "IDLE"
+            }
         }
     }
 
@@ -117,7 +166,15 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         if (char == targetChar) {
             _typedText.value += char
             _charStatus.value = _charStatus.value + true
+            _avatarState.value = "HAPPY"
             playSound("pop_sound")
+            
+            viewModelScope.launch {
+                delay(600)
+                if (_typedText.value.length < targetFullString.length) {
+                    _avatarState.value = "IDLE"
+                }
+            }
 
             if (_typedText.value.length == targetFullString.length) {
                 if (!hasErrorInCurrentWord) {
@@ -130,7 +187,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             }
         } else {
             hasErrorInCurrentWord = true
-            viewModelScope.launch { _uiEvent.emit(UiEvent.Error) }
+            _avatarState.value = "THINKING"
+            viewModelScope.launch { 
+                _uiEvent.emit(UiEvent.Error)
+                delay(1500)
+                _avatarState.value = "IDLE"
+            }
             playSound("error_sound")
         }
     }
@@ -145,8 +207,8 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             repository.updateProgress(item, isCorrect)
             
             if (isCorrect) {
+                _avatarState.value = "HAPPY"
                 _uiEvent.emit(UiEvent.Success)
-                // شهربازی فقط برای الفبا و هر ۳ مورد مستر شده
                 if (item.category == "ALPHABET") {
                     val masteredAlphabetCount = allItems.value.count { it.isMastered && it.category == "ALPHABET" }
                     if (masteredAlphabetCount > 0 && masteredAlphabetCount % 3 == 0) {
@@ -155,6 +217,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                     }
                 }
             } else {
+                _avatarState.value = "THINKING"
                 if (item.level > 1) {
                     _uiEvent.emit(UiEvent.LevelDown)
                 }
@@ -166,15 +229,8 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             _typedText.value = ""
             _charStatus.value = emptyList()
             _keyboardKeys.value = emptyList()
+            _avatarState.value = "IDLE"
         }
-    }
-
-    fun getParentNarrative(): String {
-        val items = allItems.value
-        if (items.isEmpty()) return "هنوز ماجراجویی شروع نشده است!"
-        
-        val mastered = items.count { it.isMastered }
-        return "فرزند شما $mastered مورد را به حافظه بلندمدت سپرده است."
     }
 
     fun seedData() {

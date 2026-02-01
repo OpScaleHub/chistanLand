@@ -7,8 +7,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
@@ -21,6 +23,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
@@ -30,10 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.*
 import com.example.chistanland.ui.LearningViewModel
-import com.example.chistanland.ui.theme.MangoOrange
-import com.example.chistanland.ui.theme.PastelGreen
-import com.example.chistanland.ui.theme.SkyBlue
-import com.example.chistanland.ui.theme.DeepOcean
+import com.example.chistanland.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -47,12 +47,15 @@ fun LearningSessionScreen(
     val charStatus by viewModel.charStatus.collectAsState()
     val streak by viewModel.streak.collectAsState()
     val keyboardKeys by viewModel.keyboardKeys.collectAsState()
+    val avatarState by viewModel.avatarState.collectAsState()
     val view = LocalView.current
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
 
     val shakeOffset = remember { Animatable(0f) }
     val levelDownY = remember { Animatable(0f) }
+    val scrollState = rememberScrollState()
     
-    // Hint logic with protection against flickering
     var showHint by remember { mutableStateOf(false) }
     var hintBlocked by remember { mutableStateOf(false) }
     var lastInputTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -61,16 +64,16 @@ fun LearningSessionScreen(
     LaunchedEffect(typedText) {
         lastInputTime = System.currentTimeMillis()
         showHint = false
-        // Block hint for a short duration after any input to prevent "ghost" highlighting
         hintBlocked = true
         delay(800) 
         hintBlocked = false
     }
 
     LaunchedEffect(lastInputTime) {
-        delay(5000) // 5 seconds of idle time before showing hint
+        delay(5000) 
         if (!hintBlocked) {
             showHint = true
+            viewModel.playHintInstruction() 
         }
     }
 
@@ -95,9 +98,7 @@ fun LearningSessionScreen(
                     levelDownY.animateTo(300f, animationSpec = tween(1000, easing = LinearOutSlowInEasing))
                     levelDownY.snapTo(0f)
                 }
-                is LearningViewModel.UiEvent.StartReviewSession -> {
-                    // StartReviewSession event received - can be used for navigation or special effects
-                }
+                is LearningViewModel.UiEvent.StartReviewSession -> {}
             }
         }
     }
@@ -120,6 +121,7 @@ fun LearningSessionScreen(
                             colors = listOf(SkyBlue.copy(alpha = 0.4f), Color.White)
                         )
                     )
+                    .verticalScroll(scrollState) // اضافه کردن قابلیت اسکرول برای صفحات کوچک
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -135,18 +137,16 @@ fun LearningSessionScreen(
                             .size(48.dp)
                             .background(SkyBlue.copy(alpha = 0.2f), CircleShape)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "برگشت",
-                            tint = SkyBlue
-                        )
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "برگشت", tint = SkyBlue)
                     }
+                    
+                    LearningAvatar(state = avatarState, modifier = Modifier.size(64.dp))
+                    
                     StreakIndicator(streak = streak)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Progress Indicators
                 Row(
                     modifier = Modifier.fillMaxWidth().graphicsLayer(translationY = levelDownY.value),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -173,7 +173,8 @@ fun LearningSessionScreen(
                     modifier = Modifier.graphicsLayer(translationX = shakeOffset.value)
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
+                // در حالت لنداسکیپ یا گوشی‌های خیلی کوتاه، فاصله را منعطف می‌کنیم
+                Spacer(modifier = Modifier.heightIn(min = 32.dp).weight(1f))
 
                 KidKeyboard(
                     keys = keyboardKeys,
@@ -244,7 +245,7 @@ fun WordCard(word: String, onPlaySound: () -> Unit, modifier: Modifier = Modifie
 
     Card(
         modifier = modifier
-            .size(240.dp)
+            .sizeIn(minWidth = 200.dp, minHeight = 200.dp, maxWidth = 260.dp, maxHeight = 260.dp)
             .graphicsLayer(translationY = floatAnim)
             .clickable { onPlaySound() }
             .shadow(20.dp, RoundedCornerShape(48.dp)),
@@ -253,23 +254,10 @@ fun WordCard(word: String, onPlaySound: () -> Unit, modifier: Modifier = Modifie
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "🌟",
-                    fontSize = 72.sp
-                )
-                Text(
-                    text = word,
-                    fontSize = 52.sp,
-                    fontWeight = FontWeight.Black,
-                    color = SkyBlue
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = "پخش صدا",
-                    tint = MangoOrange,
-                    modifier = Modifier.size(40.dp)
-                )
+                Text(text = "🌟", fontSize = 64.sp)
+                Text(text = word, fontSize = 42.sp, fontWeight = FontWeight.Black, color = SkyBlue)
+                Spacer(modifier = Modifier.height(8.dp))
+                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "پخش صدا", tint = MangoOrange, modifier = Modifier.size(32.dp))
             }
         }
     }
@@ -277,35 +265,16 @@ fun WordCard(word: String, onPlaySound: () -> Unit, modifier: Modifier = Modifie
 
 @Composable
 fun StreakIndicator(streak: Int) {
-    val scale by animateFloatAsState(
-        targetValue = if (streak > 0) 1.2f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy)
-    )
+    val scale by animateFloatAsState(targetValue = if (streak > 0) 1.2f else 1f)
     Surface(
         color = Color.White,
         shape = RoundedCornerShape(24.dp),
-        modifier = Modifier
-            .graphicsLayer(scaleX = scale, scaleY = scale)
-            .border(2.5.dp, MangoOrange.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
-            .shadow(4.dp, RoundedCornerShape(24.dp))
+        modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale).border(2.5.dp, MangoOrange.copy(alpha = 0.7f), RoundedCornerShape(24.dp)).shadow(4.dp, RoundedCornerShape(24.dp))
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = null,
-                tint = MangoOrange,
-                modifier = Modifier.size(28.dp)
-            )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = MangoOrange, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "$streak",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MangoOrange,
-                fontWeight = FontWeight.Black
-            )
+            Text(text = "$streak", style = MaterialTheme.typography.titleMedium, color = MangoOrange, fontWeight = FontWeight.Black)
         }
     }
 }
@@ -328,145 +297,68 @@ fun ChickStatus(streak: Int) {
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            modifier = Modifier
-                .size(80.dp)
-                .graphicsLayer(scaleX = pulse, scaleY = pulse)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(Color.Yellow.copy(alpha = 0.4f), Color.Transparent)
-                    ),
-                    shape = CircleShape
-                ),
+            modifier = Modifier.size(64.dp).graphicsLayer(scaleX = pulse, scaleY = pulse).background(brush = Brush.radialGradient(colors = listOf(Color.Yellow.copy(alpha = 0.4f), Color.Transparent)), shape = CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = chickEmoji, fontSize = 48.sp)
+            Text(text = chickEmoji, fontSize = 40.sp)
         }
-        Text(
-            text = if (streak > 0) "جوجه خوشحال" else "در انتظار...",
-            fontSize = 14.sp,
-            color = DeepOcean,
-            fontWeight = FontWeight.Bold
-        )
+        Text(text = if (streak > 0) "جوجه خوشحال" else "در انتظار...", fontSize = 12.sp, color = DeepOcean, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 fun PlantProgress(level: Int) {
-    val progressSize by animateDpAsState(
-        targetValue = (level * 20).dp.coerceAtMost(100.dp),
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
-    )
+    val progressSize by animateDpAsState(targetValue = (level * 15).dp.coerceAtMost(80.dp))
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier.height(140.dp).width(80.dp),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(54.dp, 38.dp)
-                    .background(Color(0xFF8B4513), RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
-                    .border(2.dp, Color(0xFF5D2E0A), RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
-            )
-            Box(
-                modifier = Modifier
-                    .width(10.dp)
-                    .height(progressSize)
-                    .background(PastelGreen, RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
-                    .align(Alignment.BottomCenter)
-                    .offset(y = (-32).dp)
-            ) {
-                if (level >= 2) Leaf(Modifier.align(Alignment.TopStart).offset(x = (-10).dp))
-                if (level >= 4) Leaf(Modifier.align(Alignment.CenterEnd).offset(x = 10.dp))
+        Box(modifier = Modifier.height(100.dp).width(60.dp), contentAlignment = Alignment.BottomCenter) {
+            Box(modifier = Modifier.size(44.dp, 30.dp).background(Color(0xFF8B4513), RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)).border(1.5.dp, Color(0xFF5D2E0A), RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)))
+            Box(modifier = Modifier.width(8.dp).height(progressSize).background(PastelGreen, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)).align(Alignment.BottomCenter).offset(y = (-26).dp)) {
+                if (level >= 2) Leaf(Modifier.align(Alignment.TopStart).offset(x = (-8).dp))
+                if (level >= 4) Leaf(Modifier.align(Alignment.CenterEnd).offset(x = 8.dp))
             }
         }
-        Text("سطح دانایی: $level", fontSize = 14.sp, color = DeepOcean, fontWeight = FontWeight.Bold)
+        Text("سطح: $level", fontSize = 12.sp, color = DeepOcean, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 fun Leaf(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(18.dp, 12.dp)
-            .background(PastelGreen, RoundedCornerShape(50.dp))
-    )
+    Box(modifier = modifier.size(14.dp, 10.dp).background(PastelGreen, RoundedCornerShape(50.dp)))
 }
 
 @Composable
-fun WordDisplay(
-    targetWord: String,
-    typedText: String,
-    charStatus: List<Boolean>,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+fun WordDisplay(targetWord: String, typedText: String, charStatus: List<Boolean>, modifier: Modifier = Modifier) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         targetWord.forEachIndexed { index, char ->
             val status = charStatus.getOrNull(index)
             val isTyped = index < typedText.length
-            
             val color = when {
                 status == true -> PastelGreen
                 status == false -> Color.Red
                 else -> SkyBlue.copy(alpha = 0.3f)
             }
-
             val displayText = if (isTyped) typedText[index].toString() else char.toString()
             val textAlpha = if (isTyped) 1f else 0.5f
             val scale by animateFloatAsState(if (isTyped) 1.25f else 1f)
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 6.dp)
-            ) {
-                Text(
-                    text = displayText,
-                    fontSize = 52.sp,
-                    fontWeight = FontWeight.Black,
-                    color = color.copy(alpha = textAlpha),
-                    modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
-                )
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(8.dp)
-                        .background(color, RoundedCornerShape(4.dp))
-                )
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 4.dp)) {
+                Text(text = displayText, fontSize = 42.sp, fontWeight = FontWeight.Black, color = color.copy(alpha = textAlpha), modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale))
+                Box(modifier = Modifier.width(32.dp).height(6.dp).background(color, RoundedCornerShape(3.dp)))
             }
         }
     }
 }
 
 @Composable
-fun KidKeyboard(
-    keys: List<String>,
-    onKeyClick: (String) -> Unit,
-    targetChar: String,
-    showHint: Boolean
-) {
+fun KidKeyboard(keys: List<String>, onKeyClick: (String) -> Unit, targetChar: String, showHint: Boolean) {
     val rows = keys.chunked((keys.size + 1) / 2)
-
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         rows.forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
                 row.forEach { char ->
                     val isHighlighted = showHint && char == targetChar
-                    KeyButton(
-                        char = char,
-                        onClick = { onKeyClick(char) },
-                        isHighlighted = isHighlighted,
-                        modifier = Modifier.weight(1f)
-                    )
+                    KeyButton(char = char, onClick = { onKeyClick(char) }, isHighlighted = isHighlighted, modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -476,37 +368,12 @@ fun KidKeyboard(
 @Composable
 fun KeyButton(char: String, onClick: () -> Unit, isHighlighted: Boolean, modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "key")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (isHighlighted) 1.15f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse
-        ), label = "scale"
-    )
+    val scale by infiniteTransition.animateFloat(initialValue = 1f, targetValue = if (isHighlighted) 1.1f else 1f, animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "scale")
+    val animatedBgColor by animateColorAsState(targetValue = if (isHighlighted) Color(0xFFFFD600) else MangoOrange)
 
-    val animatedBgColor by animateColorAsState(
-        targetValue = if (isHighlighted) Color(0xFFFFD600) else MangoOrange,
-        animationSpec = tween(400)
-    )
-
-    Surface(
-        modifier = modifier
-            .aspectRatio(1.1f)
-            .widthIn(max = 72.dp)
-            .graphicsLayer(scaleX = scale, scaleY = scale)
-            .clickable { onClick() }
-            .shadow(if (isHighlighted) 12.dp else 4.dp, RoundedCornerShape(18.dp)),
-        shape = RoundedCornerShape(18.dp),
-        color = animatedBgColor,
-    ) {
+    Surface(modifier = modifier.aspectRatio(1.1f).widthIn(max = 64.dp).graphicsLayer(scaleX = scale, scaleY = scale).clickable { onClick() }.shadow(if (isHighlighted) 10.dp else 2.dp, RoundedCornerShape(16.dp)), shape = RoundedCornerShape(16.dp), color = animatedBgColor) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Text(
-                text = char,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = if (isHighlighted) DeepOcean else Color.White
-            )
+            Text(text = char, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = if (isHighlighted) DeepOcean else Color.White)
         }
     }
 }

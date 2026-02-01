@@ -1,20 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Outer Glow / Halo -->
     <path
-        android:fillColor="#00000000"
-        android:pathData="M31,63.9c0,0 6.4,11.9 22,11.9s22,-11.9 22,-11.9"
-        android:strokeWidth="5"
-        android:strokeColor="#FFFFFF"
-        android:strokeLineCap="round" />
+        android:fillColor="#ffffff"
+        android:fillAlpha="0.2"
+        android:pathData="M54,54m-45,0a45,45 0,1 1,90 0a45,45 0,1 1,-90 0" />
+
+    <!-- Stylized Book / Knowledge Tablet -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M40,36m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+        android:fillColor="#ffffff"
+        android:pathData="M30,30 L78,30 Q82,30 82,34 L82,74 Q82,78 78,78 L30,78 Q26,78 26,74 L26,34 Q26,30 30,30" />
+
+    <!-- Book Spine Detail -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M68,36m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+        android:fillColor="#FF8243"
+        android:pathData="M26,34 L32,34 L32,74 L26,74 Z" />
+
+    <!-- "A" and "1" in Persian style to represent ChistanLand -->
+    <path
+        android:fillColor="#0077BE"
+        android:pathData="M48,40 L48,68 M42,54 L54,54" /> <!-- Simplified symbol -->
+
+    <path
+        android:fillColor="#FF8243"
+        android:pathData="M65,40 Q68,40 68,43 L68,68" /> <!-- Simplified symbol 2 -->
+
+    <!-- Magic Sparkles -->
+    <path android:fillColor="#FFD600" android:pathData="M20,20 L22,22 M22,20 L20,22" />
+    <path android:fillColor="#FFD600" android:pathData="M88,25 L90,27 M90,25 L88,27" />
+    <path android:fillColor="#FFD600" android:pathData="M80,85 L82,87 M82,85 L80,87" />
+
 </vector>

@@ -34,6 +34,7 @@ fun ParentDashboardScreen(
 ) {
     val items by viewModel.allItems.collectAsState()
     val narrative = viewModel.getParentNarrative()
+    val avatarState by viewModel.avatarState.collectAsState()
     var showRawData by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -85,12 +86,17 @@ fun ParentDashboardScreen(
                 }
 
                 item {
-                    Text(
-                        "داستان سفر دانایی",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DeepOcean
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "داستان سفر دانایی",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DeepOcean,
+                            modifier = Modifier.weight(1f)
+                        )
+                        // اضافه کردن آواتار کوچک به پنل والدین
+                        LearningAvatar(state = "HAPPY", modifier = Modifier.size(48.dp))
+                    }
                 }
 
                 // Generative Narrative Card
