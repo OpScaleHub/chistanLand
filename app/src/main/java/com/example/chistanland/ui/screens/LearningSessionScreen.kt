@@ -63,7 +63,6 @@ fun LearningSessionScreen(
     var lastInputTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showSuccessFestival by remember { mutableStateOf(false) }
 
-    // محاسبه اندازه بهینه کلید بر اساس عرض صفحه
     val safeKeySize = remember(configuration.screenWidthDp) {
         val screenWidth = configuration.screenWidthDp.dp
         val horizontalPadding = 48.dp 
@@ -218,32 +217,25 @@ fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () ->
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(16.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val emoji = getEmojiForWord(item.word, item.category)
                 val context = LocalContext.current
-                val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
                 
-                if (imageResId != 0) {
-                    Image(
-                        painter = painterResource(id = imageResId), 
-                        contentDescription = item.word, 
-                        modifier = Modifier.size(140.dp).clip(RoundedCornerShape(24.dp))
-                    )
+                // اولویت با اموجی‌های خاص ماست
+                if (emoji != "🌟" && emoji != "🔢") {
+                    Text(text = emoji, fontSize = 110.sp)
                 } else {
-                    Text(
-                        text = when(item.word) {
-                            "آب" -> "💧"
-                            "بابا" -> "🧔"
-                            "باد" -> "🌬️"
-                            "بام" -> "🏠"
-                            "سبد" -> "🧺"
-                            "نان" -> "🍞"
-                            "ابر" -> "☁️"
-                            "دست" -> "🖐️"
-                            "کتاب" -> "📚"
-                            "سگ" -> "🐕"
-                            else -> if (item.category == "NUMBER") "🔢" else "🌟"
-                        }, 
-                        fontSize = 80.sp
-                    )
+                    // اگر اموجی نداشتیم، سراغ تصویر می‌رویم
+                    val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
+                    if (imageResId != 0) {
+                        Image(
+                            painter = painterResource(id = imageResId), 
+                            contentDescription = item.word, 
+                            modifier = Modifier.size(140.dp).clip(RoundedCornerShape(24.dp))
+                        )
+                    } else {
+                        // در نهایت اموجی پیش‌فرض
+                        Text(text = emoji, fontSize = 110.sp)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -254,6 +246,43 @@ fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () ->
                 }
             }
         }
+    }
+}
+
+fun getEmojiForWord(word: String, category: String): String {
+    return when(word) {
+        "آب" -> "💧"
+        "بابا" -> "🧔"
+        "باد" -> "🌬️"
+        "بام" -> "🏠"
+        "سبد" -> "🧺"
+        "نان" -> "🍞"
+        "ابر" -> "☁️"
+        "دست" -> "🖐️"
+        "بوم" -> "🖼️"
+        "سیب" -> "🍎"
+        "باز" -> "🦅"
+        "آش" -> "🥣"
+        "کتاب" -> "📚"
+        "سگ" -> "🐕"
+        "برف" -> "❄️"
+        "شاخ" -> "🦌"
+        "قایق" -> "⛵"
+        "لباس" -> "👕"
+        "تاج" -> "👑"
+        "چای" -> "🍵"
+        "کوه" -> "⛰️"
+        "ژله" -> "🍮"
+        "صورت" -> "👤"
+        "ذرت" -> "🌽"
+        "عینک" -> "👓"
+        "ثروت" -> "💰"
+        "حلزون" -> "🐌"
+        "ضامن" -> "🛡️"
+        "طوطی" -> "🦜"
+        "غذا" -> "🍲"
+        "ظرف" -> "🍽️"
+        else -> if (category == "NUMBER") "🔢" else "🌟"
     }
 }
 
