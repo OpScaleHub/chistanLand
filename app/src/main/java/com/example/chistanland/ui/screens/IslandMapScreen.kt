@@ -240,11 +240,16 @@ fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modif
                 Box(contentAlignment = Alignment.Center) {
                     if (isLocked) Icon(Icons.Default.Lock, null, tint = Color.Gray)
                     else {
-                        val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
-                        if (imageResId != 0) {
-                            Image(painter = painterResource(id = imageResId), null, modifier = Modifier.size(70.dp).clip(CircleShape))
+                        val emoji = getEmojiForItem(item)
+                        if (emoji != "🌟" && emoji != "🔢") {
+                            Text(text = emoji, fontSize = 54.sp)
                         } else {
-                            Text(text = getEmojiForItem(item), fontSize = 54.sp)
+                            val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
+                            if (imageResId != 0) {
+                                Image(painter = painterResource(id = imageResId), null, modifier = Modifier.size(70.dp).clip(CircleShape))
+                            } else {
+                                Text(text = emoji, fontSize = 54.sp)
+                            }
                         }
                     }
                 }
