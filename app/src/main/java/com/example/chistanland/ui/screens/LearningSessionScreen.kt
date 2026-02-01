@@ -228,7 +228,6 @@ fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () ->
                         modifier = Modifier.size(140.dp).clip(RoundedCornerShape(24.dp))
                     )
                 } else {
-                    // Fallback to high-quality emoji if image missing
                     Text(
                         text = when(item.word) {
                             "آب" -> "💧"
@@ -236,7 +235,7 @@ fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () ->
                             "باد" -> "🌬️"
                             "بام" -> "🏠"
                             "سبد" -> "🧺"
-                            "آبان" -> "📅"
+                            "نان" -> "🍞"
                             "ابر" -> "☁️"
                             "دست" -> "🖐️"
                             "کتاب" -> "📚"
