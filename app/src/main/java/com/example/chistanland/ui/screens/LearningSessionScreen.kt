@@ -41,8 +41,6 @@ import com.example.chistanland.ui.LearningViewModel
 import com.example.chistanland.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlin.math.cos
-import kotlin.math.sin
 
 @Composable
 fun LearningSessionScreen(
@@ -64,6 +62,7 @@ fun LearningSessionScreen(
     var hintBlocked by remember { mutableStateOf(false) }
     var lastInputTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showSuccessFestival by remember { mutableStateOf(false) }
+    var isTransitioning by remember { mutableStateOf(false) }
 
     val safeKeySize = remember(configuration.screenWidthDp) {
         val screenWidth = configuration.screenWidthDp.dp
@@ -80,9 +79,12 @@ fun LearningSessionScreen(
         hintBlocked = false
     }
 
-    LaunchedEffect(lastInputTime) {
-        delay(5000) 
-        if (!hintBlocked) {
+    // Hint timer logic
+    LaunchedEffect(lastInputTime, isTransitioning, currentItem) {
+        if (isTransitioning || currentItem == null) return@LaunchedEffect
+        
+        delay(7000) // Give more time before hinting
+        if (!hintBlocked && currentItem != null) {
             showHint = true
             viewModel.playHintInstruction() 
         }
@@ -100,18 +102,31 @@ fun LearningSessionScreen(
                     shakeOffset.animateTo(0f, animationSpec = tween(40))
                 }
                 is LearningViewModel.UiEvent.Success -> {
+                    isTransitioning = true
                     view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                     showSuccessFestival = true
                     delay(2500)
                     showSuccessFestival = false
+                    // isTransitioning stays true until the screen actually finishes or currentItem becomes null
                 }
                 else -> {}
             }
         }
     }
 
+    // Important: Reset transition state when a new item arrives
+    LaunchedEffect(currentItem?.id) {
+        if (currentItem != null) {
+            isTransitioning = false
+            showHint = false
+        }
+    }
+
     if (currentItem == null) {
-        LaunchedEffect(Unit) { onBack() }
+        LaunchedEffect(Unit) { 
+            delay(100) // Small buffer
+            onBack() 
+        }
         return
     }
 
@@ -137,7 +152,10 @@ fun LearningSessionScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onBack, modifier = Modifier.size(48.dp).background(SkyBlue.copy(alpha = 0.1f), CircleShape)) {
+                    IconButton(
+                        onClick = { if (!isTransitioning) onBack() }, 
+                        modifier = Modifier.size(48.dp).background(SkyBlue.copy(alpha = 0.1f), CircleShape)
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "برگشت", tint = SkyBlue)
                     }
                     LearningAvatar(state = avatarState, modifier = Modifier.size(64.dp))
@@ -157,7 +175,6 @@ fun LearningSessionScreen(
                         PlantProgress(level = item.level)
                     }
 
-                    // بخش جدید: نمایش منظم حباب‌ها بالای کارت
                     if (item.category == "NUMBER") {
                         SessionQuantityIndicator(item.character)
                         Spacer(modifier = Modifier.height(24.dp))
@@ -165,7 +182,7 @@ fun LearningSessionScreen(
 
                     WordCard(
                         item = item, 
-                        onPlaySound = { viewModel.startLearning(item) }, 
+                        onPlaySound = { if (!isTransitioning) viewModel.startLearning(item) }, 
                         modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
                     )
                     
@@ -188,9 +205,9 @@ fun LearningSessionScreen(
                 ) {
                     KidKeyboard(
                         keys = keyboardKeys,
-                        onKeyClick = viewModel::onCharTyped, 
+                        onKeyClick = { if (!isTransitioning) viewModel.onCharTyped(it) }, 
                         targetChar = targetChar,
-                        showHint = showHint && !hintBlocked,
+                        showHint = showHint && !hintBlocked && !isTransitioning,
                         keySize = safeKeySize
                     )
                 }
@@ -212,7 +229,6 @@ fun SessionQuantityIndicator(numberChar: String) {
         }
     }
     
-    // چیدمان منظم در دو ردیف برای شمارش آسان‌تر
     val rows = if (count <= 5) 1 else 2
     val itemsPerRow = if (count <= 5) count else (count + 1) / 2
 

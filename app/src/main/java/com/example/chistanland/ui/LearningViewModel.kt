@@ -7,6 +7,7 @@ import com.example.chistanland.data.AppDatabase
 import com.example.chistanland.data.LearningItem
 import com.example.chistanland.data.LearningRepository
 import com.example.chistanland.util.AudioManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -16,6 +17,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         AppDatabase.getDatabase(application).learningDao()
     )
     private val audioManager = AudioManager(application)
+    private var narrativeJob: Job? = null
 
     val allItems: StateFlow<List<LearningItem>> = repository.allItems
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -75,6 +77,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun startLearning(item: LearningItem, isReview: Boolean = false) {
+        narrativeJob?.cancel()
         _isReviewMode.value = isReview
         _currentItem.value = item
         _typedText.value = ""
@@ -82,12 +85,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         hasErrorInCurrentWord = false
         generateAdaptiveKeyboard(item)
         
-        viewModelScope.launch {
+        narrativeJob = viewModelScope.launch {
             _avatarState.value = "SPEAKING"
-            playSound("inst_type_word") 
-            delay(1500)
-            playSound(item.phonetic)
-            delay(1000)
+            // Wait for narrative to finish before playing phonetics
+            audioManager.playSound("inst_type_word") 
+            delay(400) // Natural pause between sentences
+            audioManager.playSound(item.phonetic)
             _avatarState.value = "IDLE"
         }
     }
@@ -120,10 +123,10 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun playHintInstruction() {
-        viewModelScope.launch {
+        narrativeJob?.cancel()
+        narrativeJob = viewModelScope.launch {
             _avatarState.value = "SPEAKING"
-            playSound("inst_find_char") 
-            delay(1000)
+            audioManager.playSound("inst_find_char") 
             _avatarState.value = "IDLE"
         }
     }
@@ -157,7 +160,8 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             _typedText.value += char
             _charStatus.value = _charStatus.value + true
             _avatarState.value = "HAPPY"
-            playSound("pop_sound")
+            // SFX can be async as they don't block narrative flow
+            audioManager.playSoundAsync("pop_sound")
             if (_typedText.value.length == targetFullString.length) {
                 completeLevel(!hasErrorInCurrentWord)
             }
@@ -166,27 +170,25 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             _avatarState.value = "THINKING"
             viewModelScope.launch { 
                 _uiEvent.emit(UiEvent.Error)
-                delay(1000)
-                _avatarState.value = "IDLE"
+                delay(1200)
+                if (_avatarState.value == "THINKING") _avatarState.value = "IDLE"
             }
-            playSound("error_sound")
+            audioManager.playSoundAsync("error_sound")
         }
     }
 
-    private fun playSound(sound: String) {
-        audioManager.playSound(sound)
-    }
-
     private fun completeLevel(isCorrect: Boolean) {
-        viewModelScope.launch {
+        narrativeJob?.cancel()
+        narrativeJob = viewModelScope.launch {
             val item = _currentItem.value ?: return@launch
             repository.updateProgress(item, isCorrect)
             if (isCorrect) {
                 _streak.value += 1
-                playSound("success_fest")
-                _uiEvent.emit(UiEvent.Success)
+                // Play success music and show celebration simultaneously
+                launch { _uiEvent.emit(UiEvent.Success) }
+                audioManager.playSound("success_fest")
             }
-            delay(2500)
+            delay(1000) // Celebration time
             _currentItem.value = null
             _avatarState.value = "IDLE"
         }
