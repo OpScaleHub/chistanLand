@@ -7,8 +7,8 @@ class LearningRepository(private val learningDao: LearningDao) {
 
     val allItems: Flow<List<LearningItem>> = learningDao.getAllItems()
 
-    fun getItemsToReview(): Flow<List<LearningItem>> {
-        return learningDao.getItemsToReview(System.currentTimeMillis())
+    fun getItemsToReviewByCategory(category: String): Flow<List<LearningItem>> {
+        return learningDao.getItemsToReviewByCategory(category, System.currentTimeMillis())
     }
 
     suspend fun updateProgress(item: LearningItem, isCorrect: Boolean) {

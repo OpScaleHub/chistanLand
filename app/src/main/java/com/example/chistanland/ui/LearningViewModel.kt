@@ -48,7 +48,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val _uiEvent = MutableSharedFlow<UiEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
 
-    // Avatar States: IDLE, SPEAKING, HAPPY, THINKING
     private val _avatarState = MutableStateFlow("IDLE")
     val avatarState: StateFlow<String> = _avatarState.asStateFlow()
 
@@ -75,23 +74,20 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     fun getParentNarrative(): String {
         val items = allItems.value
         if (items.isEmpty()) return "در حال بارگذاری اطلاعات..."
-        
-        val masteredAlphabet = items.count { it.isMastered && it.category == "ALPHABET" }
-        val masteredNumbers = items.count { it.isMastered && it.category == "NUMBER" }
-        val totalItems = items.size
-        val masteredTotal = masteredAlphabet + masteredNumbers
-        
-        return when {
-            masteredTotal == totalItems -> "فوق‌العاده است! فرزند شما تمام حروف الفبا و اعداد را یاد گرفته است. حالا او می‌تواند کلمات ساده را در محیط اطرافش بخواند."
-            masteredAlphabet > 15 -> "فرزند شما تسلط خیلی خوبی روی حروف الفبا پیدا کرده است. پیشنهاد می‌کنیم با هم کلمات بیشتری بسازید."
-            masteredNumbers == 10 -> "تبریک! فرزند شما تمام اعداد ۰ تا ۹ را یاد گرفته است. حالا می‌توانید با هم بازی‌های شمارشی انجام دهید."
-            masteredTotal > 5 -> "یادگیری با موفقیت ادامه دارد. فرزند شما تاکنون $masteredTotal نشانه را به خوبی یاد گرفته است."
-            else -> "فرزند شما در حال برداشتن اولین قدم‌های خود در دنیای شگفت‌انگیز حروف و اعداد است. همراهی شما بزرگترین مشوق اوست."
-        }
+        val masteredTotal = items.count { it.isMastered }
+        return "فرزند شما تاکنون $masteredTotal نشانه را به خوبی یاد گرفته است."
     }
 
-    fun startLearning(item: LearningItem) {
-        _isReviewMode.value = false
+    fun startLearning(item: LearningItem, isReview: Boolean = false) {
+        // Validation: Ensure the item belongs to the currently selected category
+        val currentCat = _selectedCategory.value
+        if (currentCat != null && item.category != currentCat) {
+            // If there's a mismatch, we should ideally not start or fix it.
+            // But for now, let's enforce consistency.
+            _selectedCategory.value = item.category
+        }
+
+        _isReviewMode.value = isReview
         _currentItem.value = item
         _typedText.value = ""
         _charStatus.value = emptyList()
@@ -100,7 +96,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         
         viewModelScope.launch {
             _avatarState.value = "SPEAKING"
-            playSound("inst_type_word") // صدایی که می‌گوید: "حالا این کلمه رو برام بنویس"
+            playSound("inst_type_word") 
             delay(1500)
             playSound(item.phonetic)
             delay(1000)
@@ -108,36 +104,35 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun playHintInstruction() {
+    fun startReviewSession() {
+        val currentCat = _selectedCategory.value ?: "ALPHABET"
         viewModelScope.launch {
-            val current = _currentItem.value ?: return@launch
-            val targetChar = if (current.category == "NUMBER") current.character else current.word.getOrNull(_typedText.value.length)?.toString() ?: ""
+            // Get items to review ONLY for the current category
+            val itemsToReview = repository.getItemsToReviewByCategory(currentCat).first()
             
-            _avatarState.value = "SPEAKING"
-            // منطق پخش صدا: "بگرد و حرف [Target] رو پیدا کن"
-            playSound("inst_find_char") 
-            delay(1000)
-            _avatarState.value = "IDLE"
+            // Priority 1: Items specifically marked for review in this category
+            // Priority 2: Mastered items in this category (to keep the session going)
+            val pool = if (itemsToReview.isNotEmpty()) {
+                itemsToReview
+            } else {
+                allItems.value.filter { it.category == currentCat && it.isMastered }
+            }
+
+            val item = pool.randomOrNull()
+            
+            if (item != null) {
+                startLearning(item, isReview = true)
+                _uiEvent.emit(UiEvent.StartReviewSession)
+            }
         }
     }
 
-    fun startReviewSession() {
-        val mastered = allItems.value.filter { it.isMastered && it.category == "ALPHABET" }
-        if (mastered.isNotEmpty()) {
-            val itemToReview = mastered.random()
-            _isReviewMode.value = true
-            _currentItem.value = itemToReview
-            _typedText.value = ""
-            _charStatus.value = emptyList()
-            hasErrorInCurrentWord = false
-            generateAdaptiveKeyboard(itemToReview)
-            
-            viewModelScope.launch {
-                _avatarState.value = "HAPPY"
-                playSound("carnival_music")
-                delay(2000)
-                _avatarState.value = "IDLE"
-            }
+    fun playHintInstruction() {
+        viewModelScope.launch {
+            _avatarState.value = "SPEAKING"
+            playSound("inst_find_char") 
+            delay(1000)
+            _avatarState.value = "IDLE"
         }
     }
 
@@ -146,11 +141,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             _keyboardKeys.value = persianDigits
         } else {
             val wordChars = item.word.map { it.toString() }.toSet()
-            val distractorsCount = (10 - wordChars.size).coerceAtLeast(4)
-            val distractors = fullAlphabet.filterNot { wordChars.contains(it) }
-                .shuffled()
-                .take(distractorsCount)
-            
+            val distractors = fullAlphabet.filterNot { wordChars.contains(it) }.shuffled().take(6)
             _keyboardKeys.value = (wordChars + distractors).shuffled()
         }
     }
@@ -158,9 +149,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     fun onCharTyped(char: String) {
         val current = _currentItem.value ?: return
         val targetFullString = if (current.category == "NUMBER") current.character else current.word
-        
         if (_typedText.value.length >= targetFullString.length) return
-
         val targetChar = targetFullString[_typedText.value.length].toString()
         
         if (char == targetChar) {
@@ -168,29 +157,15 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             _charStatus.value = _charStatus.value + true
             _avatarState.value = "HAPPY"
             playSound("pop_sound")
-            
-            viewModelScope.launch {
-                delay(600)
-                if (_typedText.value.length < targetFullString.length) {
-                    _avatarState.value = "IDLE"
-                }
-            }
-
             if (_typedText.value.length == targetFullString.length) {
-                if (!hasErrorInCurrentWord) {
-                    _streak.value += 1
-                    completeLevel(true)
-                } else {
-                    _streak.value = 0
-                    completeLevel(false)
-                }
+                completeLevel(!hasErrorInCurrentWord)
             }
         } else {
             hasErrorInCurrentWord = true
             _avatarState.value = "THINKING"
             viewModelScope.launch { 
                 _uiEvent.emit(UiEvent.Error)
-                delay(1500)
+                delay(1000)
                 _avatarState.value = "IDLE"
             }
             playSound("error_sound")
@@ -205,79 +180,69 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val item = _currentItem.value ?: return@launch
             repository.updateProgress(item, isCorrect)
-            
             if (isCorrect) {
-                _avatarState.value = "HAPPY"
+                _streak.value += 1
                 _uiEvent.emit(UiEvent.Success)
-                if (item.category == "ALPHABET") {
-                    val masteredAlphabetCount = allItems.value.count { it.isMastered && it.category == "ALPHABET" }
-                    if (masteredAlphabetCount > 0 && masteredAlphabetCount % 3 == 0) {
-                        delay(1500)
-                        _uiEvent.emit(UiEvent.StartReviewSession)
-                    }
-                }
-            } else {
-                _avatarState.value = "THINKING"
-                if (item.level > 1) {
-                    _uiEvent.emit(UiEvent.LevelDown)
-                }
             }
-            
             delay(2000)
-            
             _currentItem.value = null
-            _typedText.value = ""
-            _charStatus.value = emptyList()
-            _keyboardKeys.value = emptyList()
             _avatarState.value = "IDLE"
         }
     }
 
     fun seedData() {
         viewModelScope.launch {
-            val alphabetItems = listOf(
+            // ترتیب آموزشی نوین (Pedagogical Order) بر اساس نشانه‌های ۱ و ۲
+            // اما ارجاع به فایل‌های ثابت (Asset Persistence)
+            val pedagogicalAlphabet = listOf(
+                // نشانه‌های ۱ (پایه)
                 LearningItem("a1", "آ", "آب", "audio_a1", "img_a1", "ALPHABET"),
-                LearningItem("a2", "ا", "اردک", "audio_a2", "img_a2", "ALPHABET"),
-                LearningItem("a3", "ب", "باران", "audio_a3", "img_a3", "ALPHABET"),
-                LearningItem("a4", "د", "دریا", "audio_a4", "img_a4", "ALPHABET"),
-                LearningItem("a5", "م", "مادر", "audio_a5", "img_a5", "ALPHABET"),
-                LearningItem("a6", "س", "سیب", "audio_a6", "img_a6", "ALPHABET"),
-                LearningItem("a7", "او", "توت", "audio_a7", "img_a7", "ALPHABET"),
-                LearningItem("a8", "ت", "تبر", "audio_a8", "img_a8", "ALPHABET"),
-                LearningItem("a9", "ر", "روباه", "audio_a9", "img_a9", "ALPHABET"),
-                LearningItem("a10", "ن", "نان", "audio_a10", "img_a10", "ALPHABET"),
-                LearningItem("a11", "ای", "ایران", "audio_a11", "img_a11", "ALPHABET"),
-                LearningItem("a12", "ز", "زنبور", "audio_a12", "img_a12", "ALPHABET"),
-                LearningItem("a13", "ش", "شتر", "audio_a13", "img_a13", "ALPHABET"),
-                LearningItem("a14", "ک", "کتاب", "audio_a14", "img_a14", "ALPHABET"),
-                LearningItem("a15", "گ", "گاو", "audio_a15", "img_a15", "ALPHABET"),
-                LearningItem("a16", "پ", "پنیر", "audio_a16", "img_a16", "ALPHABET"),
-                LearningItem("a17", "ف", "فیل", "audio_a17", "img_a17", "ALPHABET"),
-                LearningItem("a18", "خ", "خرگوش", "audio_a18", "img_a18", "ALPHABET"),
-                LearningItem("a19", "ق", "قایق", "audio_a19", "img_a19", "ALPHABET"),
-                LearningItem("a20", "ل", "لک‌لک", "audio_a20", "img_a20", "ALPHABET"),
-                LearningItem("a21", "ج", "جوجه", "audio_a21", "img_a21", "ALPHABET"),
-                LearningItem("a22", "چ", "چتر", "audio_a22", "img_a22", "ALPHABET"),
-                LearningItem("a23", "ه", "هواپیما", "audio_a23", "img_a23", "ALPHABET"),
-                LearningItem("a24", "ی", "یاس", "audio_a24", "img_a24", "ALPHABET")
+                LearningItem("a2", "ا", "اسب", "audio_a2", "img_a2", "ALPHABET"),
+                LearningItem("a3", "ب", "بابا", "audio_a3", "img_a3", "ALPHABET"),
+                LearningItem("a11", "د", "درخت", "audio_a11", "img_a11", "ALPHABET"),
+                LearningItem("a29", "م", "موز", "audio_a29", "img_a29", "ALPHABET"),
+                LearningItem("a16", "س", "سیب", "audio_a16", "img_a16", "ALPHABET"),
+                LearningItem("a5", "ت", "توت", "audio_a5", "img_a5", "ALPHABET"),
+                LearningItem("a13", "ر", "روباه", "audio_a13", "img_a13", "ALPHABET"),
+                LearningItem("a30", "ن", "نان", "audio_a30", "img_a30", "ALPHABET"),
+                LearningItem("a14", "ز", "زنبور", "audio_a14", "img_a14", "ALPHABET"),
+                LearningItem("a17", "ش", "شتر", "audio_a17", "img_a17", "ALPHABET"),
+                LearningItem("a26", "ک", "کتاب", "audio_a26", "img_a26", "ALPHABET"),
+                LearningItem("a31", "و", "ورزش", "audio_a31", "img_a31", "ALPHABET"),
+                LearningItem("a4", "پ", "پا", "audio_a4", "img_a4", "ALPHABET"),
+                LearningItem("a27", "گ", "گاو", "audio_a27", "img_a27", "ALPHABET"),
+                LearningItem("a24", "ف", "فیل", "audio_a24", "img_a24", "ALPHABET"),
+                LearningItem("a10", "خ", "خرگوش", "audio_a10", "img_a10", "ALPHABET"),
+                LearningItem("a25", "ق", "قایق", "audio_a25", "img_a25", "ALPHABET"),
+                LearningItem("a28", "ل", "لباس", "audio_a28", "img_a28", "ALPHABET"),
+                LearningItem("a7", "ج", "جوجه", "audio_a7", "img_a7", "ALPHABET"),
+                LearningItem("a32", "ه", "هلو", "audio_a32", "img_a32", "ALPHABET"),
+                LearningItem("a8", "چ", "چای", "audio_a8", "img_a8", "ALPHABET"),
+                LearningItem("a15", "ژ", "ژله", "audio_a15", "img_a15", "ALPHABET"),
+                
+                // نشانه‌های ۲ (تخصصی و عربی)
+                LearningItem("a18", "ص", "صورت", "audio_a18", "img_a18", "ALPHABET"),
+                LearningItem("a12", "ذ", "ذرت", "audio_a12", "img_a12", "ALPHABET"),
+                LearningItem("a22", "ع", "عینک", "audio_a22", "img_a22", "ALPHABET"),
+                LearningItem("a6", "ث", "ثروت", "audio_a6", "img_a6", "ALPHABET"),
+                LearningItem("a9", "ح", "حلزون", "audio_a9", "img_a9", "ALPHABET"),
+                LearningItem("a19", "ض", "ضامن", "audio_a19", "img_a19", "ALPHABET"),
+                LearningItem("a20", "ط", "طوطی", "audio_a20", "img_a20", "ALPHABET"),
+                LearningItem("a23", "غ", "غذا", "audio_a23", "img_a23", "ALPHABET"),
+                LearningItem("a21", "ظ", "ظرف", "audio_a21", "img_a21", "ALPHABET"),
+                LearningItem("a33", "ی", "یخ", "audio_a33", "img_a33", "ALPHABET")
             )
             
-            val numberItems = listOf(
-                LearningItem("n0", "۰", "صفر", "audio_n0", "img_n0", "NUMBER"),
-                LearningItem("n1", "۱", "یک", "audio_n1", "img_n1", "NUMBER"),
-                LearningItem("n2", "۲", "دو", "audio_n2", "img_n2", "NUMBER"),
-                LearningItem("n3", "۳", "سه", "audio_n3", "img_n3", "NUMBER"),
-                LearningItem("n4", "۴", "چهار", "audio_n4", "img_n4", "NUMBER"),
-                LearningItem("n5", "۵", "پنج", "audio_n5", "img_n5", "NUMBER"),
-                LearningItem("n6", "۶", "شش", "audio_n6", "img_n6", "NUMBER"),
-                LearningItem("n7", "۷", "هفت", "audio_n7", "img_n7", "NUMBER"),
-                LearningItem("n8", "۸", "هشت", "audio_n8", "img_n8", "NUMBER"),
-                LearningItem("n9", "۹", "نه", "audio_n9", "img_n9", "NUMBER")
-            )
+            val numberItems = (0..9).map { 
+                LearningItem("n$it", it.toString().toPersianDigit(), it.toPersianWord(), "audio_n$it", "img_n$it", "NUMBER") 
+            }
             
-            repository.insertInitialData(alphabetItems + numberItems)
+            repository.insertInitialData(pedagogicalAlphabet + numberItems)
         }
     }
+
+    private fun String.toPersianDigit() = this.replace('0','۰').replace('1','۱').replace('2','۲').replace('3','۳').replace('4','۴').replace('5','۵').replace('6','۶').replace('7','۷').replace('8','۸').replace('9','۹')
+    private fun Int.toPersianWord() = listOf("صفر","یک","دو","سه","چهار","پنج","شش","هفت","هشت","نه")[this]
 
     override fun onCleared() {
         super.onCleared()

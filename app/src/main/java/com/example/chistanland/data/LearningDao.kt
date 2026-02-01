@@ -15,8 +15,8 @@ interface LearningDao {
     @Query("SELECT * FROM learning_items WHERE id = :id")
     suspend fun getItemById(id: String): LearningItem?
 
-    @Query("SELECT * FROM learning_items WHERE nextReviewTime <= :currentTime OR level = 1")
-    fun getItemsToReview(currentTime: Long): Flow<List<LearningItem>>
+    @Query("SELECT * FROM learning_items WHERE category = :category AND (nextReviewTime <= :currentTime OR level = 1)")
+    fun getItemsToReviewByCategory(category: String, currentTime: Long): Flow<List<LearningItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertItems(items: List<LearningItem>)
