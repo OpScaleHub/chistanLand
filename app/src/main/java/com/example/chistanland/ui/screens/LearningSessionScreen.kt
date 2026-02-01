@@ -95,6 +95,9 @@ fun LearningSessionScreen(
                     levelDownY.animateTo(300f, animationSpec = tween(1000, easing = LinearOutSlowInEasing))
                     levelDownY.snapTo(0f)
                 }
+                is LearningViewModel.UiEvent.StartReviewSession -> {
+                    // StartReviewSession event received - can be used for navigation or special effects
+                }
             }
         }
     }

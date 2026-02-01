@@ -81,6 +81,10 @@ fun ChistanApp(viewModel: LearningViewModel) {
                     viewModel.startLearning(item)
                     navController.navigate("learning")
                 },
+                onStartReview = {
+                    viewModel.startReviewSession()
+                    navController.navigate("learning")
+                },
                 onOpenParentPanel = {
                     navController.navigate("parent")
                 },

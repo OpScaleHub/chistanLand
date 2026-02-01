@@ -17,7 +17,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -32,15 +31,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.chistanland.data.LearningItem
 import com.example.chistanland.ui.LearningViewModel
-import com.example.chistanland.ui.theme.DeepOcean
-import com.example.chistanland.ui.theme.MangoOrange
-import com.example.chistanland.ui.theme.PastelGreen
-import com.example.chistanland.ui.theme.SkyBlue
+import com.example.chistanland.ui.theme.*
 
 @Composable
 fun IslandMapScreen(
     viewModel: LearningViewModel,
     onStartItem: (LearningItem) -> Unit,
+    onStartReview: () -> Unit,
     onOpenParentPanel: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -69,7 +66,7 @@ fun IslandMapScreen(
             if (items.isEmpty()) {
                 EmptyMapState { viewModel.seedData() }
             } else {
-                SagaMap(items, onStartItem)
+                SagaMap(items, category ?: "", onStartItem, onStartReview)
             }
         }
     }
@@ -82,9 +79,7 @@ fun MapHeader(
     onBack: () -> Unit
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp),
+        modifier = Modifier.fillMaxWidth().padding(24.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -100,218 +95,154 @@ fun MapHeader(
                     fontWeight = FontWeight.Black,
                     color = DeepOcean
                 )
-                Text(
-                    text = if (category == "NUMBER") "ماجراجویی شمارش" else "ماجراجویی الفبا",
-                    fontSize = 14.sp,
-                    color = DeepOcean.copy(alpha = 0.6f)
-                )
             }
         }
         
         Surface(
-            modifier = Modifier
-                .size(48.dp)
-                .pointerInput(Unit) {
-                    detectTapGestures(onLongPress = { onOpenParentPanel() })
-                },
+            modifier = Modifier.size(48.dp).pointerInput(Unit) {
+                detectTapGestures(onLongPress = { onOpenParentPanel() })
+            },
             shape = CircleShape,
             color = Color.White.copy(alpha = 0.5f),
             border = BorderStroke(2.dp, SkyBlue.copy(alpha = 0.3f))
         ) {
-            Icon(
-                imageVector = Icons.Default.Settings,
-                contentDescription = "Settings",
-                modifier = Modifier.padding(12.dp),
-                tint = DeepOcean.copy(alpha = 0.4f)
-            )
+            Icon(Icons.Default.Settings, null, modifier = Modifier.padding(12.dp), tint = DeepOcean.copy(alpha = 0.4f))
         }
     }
 }
 
 @Composable
-fun SagaMap(items: List<LearningItem>, onStartItem: (LearningItem) -> Unit) {
+fun SagaMap(
+    items: List<LearningItem>,
+    category: String,
+    onStartItem: (LearningItem) -> Unit,
+    onStartReview: () -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 100.dp, top = 20.dp)
     ) {
         itemsIndexed(items) { index, item ->
-            // Logic: First item is always unlocked. Others unlocked if previous is mastered.
             val isLocked = index > 0 && !items[index - 1].isMastered
             val isEven = index % 2 == 0
             
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                contentAlignment = if (isEven) Alignment.CenterStart else Alignment.CenterEnd
-            ) {
-                if (index < items.size - 1) {
-                    PathConnection(isEven)
+            Column(horizontalAlignment = if (isEven) Alignment.Start else Alignment.End) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    contentAlignment = if (isEven) Alignment.CenterStart else Alignment.CenterEnd
+                ) {
+                    if (index < items.size - 1) PathConnection(isEven)
+                    
+                    IslandNode(
+                        item = item,
+                        isLocked = isLocked,
+                        modifier = Modifier.padding(horizontal = 40.dp),
+                        onClick = { onStartItem(item) }
+                    )
                 }
-                
-                IslandNode(
-                    item = item,
-                    isLocked = isLocked,
-                    modifier = Modifier.padding(horizontal = 40.dp),
-                    onClick = { onStartItem(item) }
-                )
+
+                // شهربازی فقط برای دسته حروف الفبا و بعد از هر ۳ آیتم
+                if (category == "ALPHABET" && (index + 1) % 3 == 0 && index < items.size - 1) {
+                    val reviewLocked = !item.isMastered
+                    AmusementParkNode(
+                        isLocked = reviewLocked,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                        onClick = onStartReview
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun AmusementParkNode(isLocked: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Surface(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clickable(enabled = !isLocked) { onClick() }
+                    .shadow(if (isLocked) 0.dp else 15.dp, RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                color = if (isLocked) Color.LightGray else Color(0xFFFF4081),
+                border = BorderStroke(4.dp, Color.White)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (isLocked) {
+                        Icon(Icons.Default.Lock, null, tint = Color.Gray)
+                    } else {
+                        Text("🎡", fontSize = 50.sp)
+                    }
+                }
+            }
+            Text(
+                "شهربازی مرور",
+                color = if (isLocked) Color.Gray else Color(0xFFFF4081),
+                fontWeight = FontWeight.Black,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
     }
 }
 
 @Composable
 fun PathConnection(isEven: Boolean) {
-    Canvas(modifier = Modifier.fillMaxWidth().height(120.dp).offset(y = 80.dp)) {
+    Canvas(modifier = Modifier.fillMaxWidth().height(140.dp).offset(y = 90.dp)) {
         val path = Path().apply {
             if (isEven) {
                 moveTo(size.width * 0.25f, 0f)
-                cubicTo(
-                    size.width * 0.25f, size.height * 0.5f,
-                    size.width * 0.75f, size.height * 0.5f,
-                    size.width * 0.75f, size.height
-                )
+                cubicTo(size.width * 0.25f, size.height * 0.5f, size.width * 0.75f, size.height * 0.5f, size.width * 0.75f, size.height)
             } else {
                 moveTo(size.width * 0.75f, 0f)
-                cubicTo(
-                    size.width * 0.75f, size.height * 0.5f,
-                    size.width * 0.25f, size.height * 0.5f,
-                    size.width * 0.25f, size.height
-                )
+                cubicTo(size.width * 0.75f, size.height * 0.5f, size.width * 0.25f, size.height * 0.5f, size.width * 0.25f, size.height)
             }
         }
-        drawPath(
-            path = path,
-            color = DeepOcean.copy(alpha = 0.1f),
-            style = Stroke(
-                width = 8f,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)
-            )
-        )
+        drawPath(path = path, color = DeepOcean.copy(alpha = 0.1f), style = Stroke(width = 8f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)))
     }
 }
 
 @Composable
-fun IslandNode(
-    item: LearningItem,
-    isLocked: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
+fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "island")
     val floatAnim by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 10f,
-        animationSpec = infiniteRepeatable(tween(2000, easing = EaseInOutSine), RepeatMode.Reverse),
-        label = "float"
+        initialValue = 0f, targetValue = 10f,
+        animationSpec = infiniteRepeatable(tween(2000, easing = EaseInOutSine), RepeatMode.Reverse), label = "float"
     )
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .graphicsLayer(translationY = if (!isLocked) floatAnim else 0f)
-            .clickable(enabled = !isLocked) { onClick() }
+        modifier = modifier.graphicsLayer(translationY = if (!isLocked) floatAnim else 0f).clickable(enabled = !isLocked) { onClick() }
     ) {
         Box(contentAlignment = Alignment.Center) {
             Surface(
-                modifier = Modifier
-                    .size(120.dp)
-                    .shadow(if (isLocked) 0.dp else 12.dp, CircleShape),
+                modifier = Modifier.size(110.dp).shadow(if (isLocked) 0.dp else 10.dp, CircleShape),
                 shape = CircleShape,
                 color = when {
                     isLocked -> Color(0xFFE0E0E0)
                     item.isMastered -> Color(0xFFFFD600)
                     else -> if (item.category == "NUMBER") MangoOrange else PastelGreen
                 },
-                border = BorderStroke(
-                    4.dp, 
-                    if (isLocked) Color.LightGray else Color.White.copy(alpha = 0.5f)
-                )
+                border = BorderStroke(4.dp, Color.White.copy(alpha = 0.5f))
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    if (isLocked) {
-                        Icon(Icons.Default.Lock, null, tint = Color.Gray, modifier = Modifier.size(40.dp))
-                    } else {
-                        Text(
-                            text = item.character,
-                            fontSize = 48.sp,
-                            fontWeight = FontWeight.Black,
-                            color = if (item.isMastered || item.category == "NUMBER") DeepOcean else Color.White
-                        )
-                    }
+                    if (isLocked) Icon(Icons.Default.Lock, null, tint = Color.Gray)
+                    else Text(item.character, fontSize = 44.sp, fontWeight = FontWeight.Black, color = if (item.isMastered || item.category == "NUMBER") DeepOcean else Color.White)
                 }
             }
-
-            if (!isLocked && item.level > 1 && !item.isMastered) {
-                SmallPlantBadge(item.level, Modifier.align(Alignment.TopEnd))
-            }
-            
-            if (item.isMastered) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    tint = MangoOrange,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .align(Alignment.TopStart)
-                        .offset(x = (-8).dp, y = (-8).dp)
-                        .rotate(-15f)
-                )
-            }
+            if (item.isMastered) Icon(Icons.Default.Star, null, tint = MangoOrange, modifier = Modifier.size(30.dp).align(Alignment.TopStart).offset(x = (-4).dp, y = (-4).dp).rotate(-15f))
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Surface(
-            color = if (isLocked) Color.Transparent else Color.White.copy(alpha = 0.8f),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = if (isLocked) "؟؟؟" else item.word,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isLocked) Color.Gray else DeepOcean
-            )
-        }
-    }
-}
-
-@Composable
-fun SmallPlantBadge(level: Int, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.size(36.dp),
-        shape = CircleShape,
-        color = Color.White,
-        border = BorderStroke(2.dp, PastelGreen),
-        shadowElevation = 4.dp
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = when(level) {
-                    2 -> "🌱"
-                    3 -> "🌿"
-                    4 -> "🌸"
-                    else -> "🥚"
-                },
-                fontSize = 18.sp
-            )
-        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(text = if (isLocked) "؟؟؟" else item.word, fontWeight = FontWeight.Bold, color = if (isLocked) Color.Gray else DeepOcean)
     }
 }
 
 @Composable
 fun EmptyMapState(onSeed: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("نقشه هنوز خالی است!", color = DeepOcean)
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = onSeed,
-                colors = ButtonDefaults.buttonColors(containerColor = MangoOrange)
-            ) {
-                Text("شروع ماجراجویی", fontWeight = FontWeight.Bold)
-            }
+        Button(onClick = onSeed, colors = ButtonDefaults.buttonColors(containerColor = MangoOrange)) {
+            Text("شروع ماجراجویی الفبا", fontWeight = FontWeight.Bold)
         }
     }
 }
