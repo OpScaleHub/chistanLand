@@ -171,7 +171,10 @@ fun MapHeader(category: String, onOpenParentPanel: () -> Unit, onBack: () -> Uni
 
 @Composable
 fun SagaMap(items: List<LearningItem>, category: String, onStartItem: (LearningItem) -> Unit, onStartReview: (List<LearningItem>) -> Unit) {
-    val firstLockedIndex = remember(items) { items.indexOfFirst { !it.isMastered }.let { if (it == -1) items.size - 1 else it } }
+    val firstLockedIndex = remember(items) { 
+        val index = items.indexOfFirst { !it.isMastered }
+        if (index == -1) items.size - 1 else index 
+    }
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = (firstLockedIndex - 1).coerceAtLeast(0))
 
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 120.dp, top = 20.dp)) {

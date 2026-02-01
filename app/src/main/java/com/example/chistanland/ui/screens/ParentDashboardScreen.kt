@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.chistanland.data.LearningItem
 import com.example.chistanland.ui.LearningViewModel
 import com.example.chistanland.ui.theme.*
 
@@ -34,7 +35,6 @@ fun ParentDashboardScreen(
 ) {
     val items by viewModel.allItems.collectAsState()
     val narrative = viewModel.getParentNarrative()
-    val avatarState by viewModel.avatarState.collectAsState()
     var showRawData by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -130,7 +130,7 @@ fun ParentDashboardScreen(
 }
 
 @Composable
-fun ProgressSummaryRow(items: List<com.example.chistanland.data.LearningItem>) {
+fun ProgressSummaryRow(items: List<LearningItem>) {
     val mastered = items.count { it.isMastered }
     val total = items.size
     val progress = if (total > 0) mastered.toFloat() / total else 0f
@@ -165,7 +165,7 @@ fun ProgressSummaryRow(items: List<com.example.chistanland.data.LearningItem>) {
                 color = DeepOcean
             )
             Text(
-                text = "$mastered از $total حرف در حافظه بآبادمدت",
+                text = "$mastered از $total حرف در حافظه بلندمدت",
                 fontSize = 14.sp,
                 color = DeepOcean.copy(alpha = 0.7f)
             )
@@ -245,7 +245,7 @@ fun NarrativeCard(
 }
 
 @Composable
-fun RawDataItem(item: com.example.chistanland.data.LearningItem) {
+fun RawDataItem(item: LearningItem) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White,
