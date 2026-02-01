@@ -26,7 +26,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -37,8 +36,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.airbnb.lottie.compose.*
 import com.example.chistanland.ui.LearningViewModel
 import com.example.chistanland.ui.theme.*
@@ -66,7 +63,7 @@ fun LearningSessionScreen(
     var lastInputTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showSuccessFestival by remember { mutableStateOf(false) }
 
-    // محاسبه اندازه بهینه کلید بر اساس عرض صفحه (مکانیزم امنیتی ۲)
+    // محاسبه اندازه بهینه کلید بر اساس عرض صفحه
     val safeKeySize = remember(configuration.screenWidthDp) {
         val screenWidth = configuration.screenWidthDp.dp
         val horizontalPadding = 48.dp 
@@ -132,7 +129,6 @@ fun LearningSessionScreen(
                 )
             )
         )) {
-            // ساختار چیدمان امن (مکانیزم امنیتی ۱ و ۳)
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header
                 Row(
@@ -147,7 +143,7 @@ fun LearningSessionScreen(
                     StreakIndicator(streak = streak)
                 }
 
-                // بخش میانی اسکرول‌شونده
+                // Scrollable Content
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -167,7 +163,7 @@ fun LearningSessionScreen(
                     Spacer(modifier = Modifier.height(32.dp))
                 }
 
-                // بخش کیبورد ثابت در پایین (Sticky Keyboard)
+                // Fixed Bottom Keyboard
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -222,25 +218,35 @@ fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () ->
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(16.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (item.imageUrl.startsWith("http")) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(item.imageUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = item.word,
-                        modifier = Modifier.size(130.dp).clip(RoundedCornerShape(24.dp)),
-                        contentScale = ContentScale.Fit
+                val context = LocalContext.current
+                val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
+                
+                if (imageResId != 0) {
+                    Image(
+                        painter = painterResource(id = imageResId), 
+                        contentDescription = item.word, 
+                        modifier = Modifier.size(140.dp).clip(RoundedCornerShape(24.dp))
                     )
                 } else {
-                    val context = LocalContext.current
-                    val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
-                    if (imageResId != 0) {
-                        Image(painter = painterResource(id = imageResId), item.word, modifier = Modifier.size(110.dp).clip(RoundedCornerShape(24.dp)))
-                    } else {
-                        Text(if (item.category == "NUMBER") "🔢" else "🌟", fontSize = 64.sp)
-                    }
+                    // Fallback to high-quality emoji if image missing
+                    Text(
+                        text = when(item.word) {
+                            "آب" -> "💧"
+                            "بابا" -> "🧔"
+                            "باد" -> "🌬️"
+                            "بام" -> "🏠"
+                            "سبد" -> "🧺"
+                            "آبان" -> "📅"
+                            "ابر" -> "☁️"
+                            "دست" -> "🖐️"
+                            "کتاب" -> "📚"
+                            "سگ" -> "🐕"
+                            else -> if (item.category == "NUMBER") "🔢" else "🌟"
+                        }, 
+                        fontSize = 80.sp
+                    )
                 }
+
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(item.word, fontSize = 34.sp, fontWeight = FontWeight.Black, color = if (item.category == "NUMBER") MangoOrange else SkyBlue)
                 Row(verticalAlignment = Alignment.CenterVertically) {
