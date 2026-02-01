@@ -1,4 +1,4 @@
-package com.example.chistanland.ui.screens
+package com.github.opscalehub.chistanland.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
@@ -9,9 +9,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,9 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.chistanland.data.LearningItem
-import com.example.chistanland.ui.LearningViewModel
-import com.example.chistanland.ui.theme.*
+import com.github.opscalehub.chistanland.data.LearningItem
+import com.github.opscalehub.chistanland.ui.LearningViewModel
+import com.github.opscalehub.chistanland.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -192,7 +192,7 @@ fun NarrativeCard(
                     shape = CircleShape
                 ) {
                     Icon(
-                        Icons.Default.TrendingUp,
+                        Icons.AutoMirrored.Filled.TrendingUp,
                         contentDescription = null,
                         tint = MangoOrange,
                         modifier = Modifier.padding(8.dp).size(20.dp)

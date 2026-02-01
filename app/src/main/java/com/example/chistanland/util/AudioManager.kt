@@ -1,4 +1,4 @@
-package com.example.chistanland.util
+package com.github.opscalehub.chistanland.util
 
 import android.content.Context
 import android.media.AudioAttributes
@@ -35,11 +35,11 @@ class AudioManager(private val context: Context) {
             if (it.isPlaying) it.stop()
             it.release()
         }
-        
+
         return suspendCancellableCoroutine { continuation ->
             val mp = MediaPlayer.create(context, resId)
             mediaPlayer = mp
-            
+
             if (mp == null) {
                 continuation.resume(Unit)
                 return@suspendCancellableCoroutine
@@ -50,7 +50,7 @@ class AudioManager(private val context: Context) {
                 if (mediaPlayer == it) mediaPlayer = null
                 if (continuation.isActive) continuation.resume(Unit)
             }
-            
+
             mp.setOnErrorListener { _, _, _ ->
                 mp.release()
                 if (mediaPlayer == mp) mediaPlayer = null

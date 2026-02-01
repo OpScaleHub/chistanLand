@@ -1,4 +1,4 @@
-package com.example.chistanland.ui.screens
+package com.github.opscalehub.chistanland.ui.screens
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.*
@@ -37,8 +37,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.*
-import com.example.chistanland.ui.LearningViewModel
-import com.example.chistanland.ui.theme.*
+import com.github.opscalehub.chistanland.ui.LearningViewModel
+import com.github.opscalehub.chistanland.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -56,7 +56,7 @@ fun LearningSessionScreen(
     val view = LocalView.current
     val scrollState = rememberScrollState()
     val configuration = LocalConfiguration.current
-    
+
     val shakeOffset = remember { Animatable(0f) }
     var showHint by remember { mutableStateOf(false) }
     var hintBlocked by remember { mutableStateOf(false) }
@@ -66,8 +66,8 @@ fun LearningSessionScreen(
 
     val safeKeySize = remember(configuration.screenWidthDp) {
         val screenWidth = configuration.screenWidthDp.dp
-        val horizontalPadding = 48.dp 
-        val totalSpacing = 40.dp 
+        val horizontalPadding = 48.dp
+        val totalSpacing = 40.dp
         ((screenWidth - horizontalPadding - totalSpacing) / 4).coerceIn(56.dp, 72.dp)
     }
 
@@ -75,18 +75,18 @@ fun LearningSessionScreen(
         lastInputTime = System.currentTimeMillis()
         showHint = false
         hintBlocked = true
-        delay(800) 
+        delay(800)
         hintBlocked = false
     }
 
     // Hint timer logic
     LaunchedEffect(lastInputTime, isTransitioning, currentItem) {
         if (isTransitioning || currentItem == null) return@LaunchedEffect
-        
+
         delay(7000) // Give more time before hinting
         if (!hintBlocked && currentItem != null) {
             showHint = true
-            viewModel.playHintInstruction() 
+            viewModel.playHintInstruction()
         }
     }
 
@@ -123,9 +123,9 @@ fun LearningSessionScreen(
     }
 
     if (currentItem == null) {
-        LaunchedEffect(Unit) { 
+        LaunchedEffect(Unit) {
             delay(100) // Small buffer
-            onBack() 
+            onBack()
         }
         return
     }
@@ -153,7 +153,7 @@ fun LearningSessionScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = { if (!isTransitioning) onBack() }, 
+                        onClick = { if (!isTransitioning) onBack() },
                         modifier = Modifier.size(48.dp).background(SkyBlue.copy(alpha = 0.1f), CircleShape)
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "برگشت", tint = SkyBlue)
@@ -181,11 +181,11 @@ fun LearningSessionScreen(
                     }
 
                     WordCard(
-                        item = item, 
-                        onPlaySound = { if (!isTransitioning) viewModel.startLearning(item) }, 
+                        item = item,
+                        onPlaySound = { if (!isTransitioning) viewModel.startLearning(item) },
                         modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
                     )
-                    
+
                     Spacer(modifier = Modifier.height(40.dp))
                     WordDisplay(targetWord = targetFullString, typedText = typedText, charStatus = charStatus, modifier = Modifier.graphicsLayer { translationX = shakeOffset.value })
                     Spacer(modifier = Modifier.height(32.dp))
@@ -205,7 +205,7 @@ fun LearningSessionScreen(
                 ) {
                     KidKeyboard(
                         keys = keyboardKeys,
-                        onKeyClick = { if (!isTransitioning) viewModel.onCharTyped(it) }, 
+                        onKeyClick = { if (!isTransitioning) viewModel.onCharTyped(it) },
                         targetChar = targetChar,
                         showHint = showHint && !hintBlocked && !isTransitioning,
                         keySize = safeKeySize
@@ -228,7 +228,7 @@ fun SessionQuantityIndicator(numberChar: String) {
             "۶" -> 6; "۷" -> 7; "۸" -> 8; "۹" -> 9; "۰" -> 0; else -> 0
         }
     }
-    
+
     val rows = if (count <= 5) 1 else 2
     val itemsPerRow = if (count <= 5) count else (count + 1) / 2
 
@@ -269,7 +269,7 @@ fun MagicOrb(index: Int) {
         ),
         label = "float"
     )
-    
+
     Box(
         modifier = Modifier
             .size(32.dp)
@@ -290,7 +290,7 @@ fun SuccessFestivalOverlay() {
     val context = LocalContext.current
     val resId = context.resources.getIdentifier("success_fest_anim", "raw", context.packageName)
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(if (resId != 0) resId else 1))
-    
+
     Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
         if (composition != null) {
             LottieAnimation(composition = composition, iterations = LottieConstants.IterateForever, modifier = Modifier.size(400.dp))
@@ -300,7 +300,7 @@ fun SuccessFestivalOverlay() {
 }
 
 @Composable
-fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () -> Unit, modifier: Modifier = Modifier) {
+fun WordCard(item: com.github.opscalehub.chistanland.data.LearningItem, onPlaySound: () -> Unit, modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "wordCard")
     val floatAnim by infiniteTransition.animateFloat(initialValue = -8f, targetValue = 8f, animationSpec = infiniteRepeatable(tween(2500, easing = EaseInOutSine), RepeatMode.Reverse), label = "float")
 
@@ -313,15 +313,15 @@ fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () ->
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 val emoji = getEmojiForWord(item.word, item.category)
                 val context = LocalContext.current
-                
+
                 if (emoji != "🌟" && emoji != "🔢") {
                     Text(text = emoji, fontSize = 110.sp)
                 } else {
                     val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
                     if (imageResId != 0) {
                         Image(
-                            painter = painterResource(id = imageResId), 
-                            contentDescription = item.word, 
+                            painter = painterResource(id = imageResId),
+                            contentDescription = item.word,
                             modifier = Modifier.size(140.dp).clip(RoundedCornerShape(24.dp))
                         )
                     } else {
@@ -437,7 +437,7 @@ fun KeyButton(char: String, onClick: () -> Unit, isHighlighted: Boolean, size: D
     val animatedBgColor by animateColorAsState(if (isHighlighted) Color(0xFFFFD600) else MangoOrange, label = "keyColor")
 
     Surface(
-        modifier = Modifier.size(size).graphicsLayer { scaleX = scale; scaleY = scale }.clickable { onClick() }.shadow(if (isHighlighted) 12.dp else 4.dp, RoundedCornerShape(20.dp)), 
+        modifier = Modifier.size(size).graphicsLayer { scaleX = scale; scaleY = scale }.clickable { onClick() }.shadow(if (isHighlighted) 12.dp else 4.dp, RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp), color = animatedBgColor, border = BorderStroke(3.dp, Color.White.copy(alpha = 0.6f))
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {

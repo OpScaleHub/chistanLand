@@ -1,4 +1,4 @@
-package com.example.chistanland.data
+package com.github.opscalehub.chistanland.data
 
 import androidx.room.Dao
 import androidx.room.Insert

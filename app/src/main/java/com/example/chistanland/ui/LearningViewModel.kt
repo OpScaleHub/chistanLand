@@ -1,12 +1,12 @@
-package com.example.chistanland.ui
+package com.github.opscalehub.chistanland.ui
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.chistanland.data.AppDatabase
-import com.example.chistanland.data.LearningItem
-import com.example.chistanland.data.LearningRepository
-import com.example.chistanland.util.AudioManager
+import com.github.opscalehub.chistanland.data.AppDatabase
+import com.github.opscalehub.chistanland.data.LearningItem
+import com.github.opscalehub.chistanland.data.LearningRepository
+import com.github.opscalehub.chistanland.util.AudioManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -21,7 +21,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     val allItems: StateFlow<List<LearningItem>> = repository.allItems
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    
+
     private val _selectedCategory = MutableStateFlow<String?>(null)
     val selectedCategory: StateFlow<String?> = _selectedCategory.asStateFlow()
 
@@ -84,11 +84,11 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _charStatus.value = emptyList()
         hasErrorInCurrentWord = false
         generateAdaptiveKeyboard(item)
-        
+
         narrativeJob = viewModelScope.launch {
             _avatarState.value = "SPEAKING"
             // Wait for narrative to finish before playing phonetics
-            audioManager.playSound("inst_type_word") 
+            audioManager.playSound("inst_type_word")
             delay(400) // Natural pause between sentences
             audioManager.playSound(item.phonetic)
             _avatarState.value = "IDLE"
@@ -99,7 +99,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         val currentCat = _selectedCategory.value ?: "ALPHABET"
         viewModelScope.launch {
             val itemsToReview = repository.getItemsToReviewByCategory(currentCat).first()
-            
+
             val basePool = if (allowedItems != null) {
                 itemsToReview.filter { item -> allowedItems.any { it.id == item.id } }
             } else {
@@ -112,7 +112,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 val fallbackPool = allowedItems ?: allItems.value.filter { it.category == currentCat }
                 fallbackPool.filter { it.level > 1 || it.isMastered }
             }
-            
+
             val selected = pool.randomOrNull()
             if (selected != null) {
                 startLearning(selected, isReview = true)
@@ -126,7 +126,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         narrativeJob?.cancel()
         narrativeJob = viewModelScope.launch {
             _avatarState.value = "SPEAKING"
-            audioManager.playSound("inst_find_char") 
+            audioManager.playSound("inst_find_char")
             _avatarState.value = "IDLE"
         }
     }
@@ -138,13 +138,13 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             val wordChars = item.word.map { it.toString() }.toSet()
             val currentItems = filteredItems.value
             val currentIndex = currentItems.indexOfFirst { it.id == item.id }
-            
+
             val accessibleLetters = if (currentIndex >= 0) {
                 currentItems.take(currentIndex + 1).flatMap { it.word.map { c -> c.toString() } }.toSet()
             } else {
                 currentItems.filter { it.level > 1 || it.isMastered }.flatMap { it.word.map { c -> c.toString() } }.toSet()
             }
-            
+
             val totalPool = (wordChars + accessibleLetters).toList().shuffled()
             _keyboardKeys.value = totalPool.take(12).shuffled()
         }
@@ -155,7 +155,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         val targetFullString = if (current.category == "NUMBER") current.character else current.word
         if (_typedText.value.length >= targetFullString.length) return
         val targetChar = targetFullString[_typedText.value.length].toString()
-        
+
         if (char == targetChar) {
             _typedText.value += char
             _charStatus.value = _charStatus.value + true
@@ -168,7 +168,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         } else {
             hasErrorInCurrentWord = true
             _avatarState.value = "THINKING"
-            viewModelScope.launch { 
+            viewModelScope.launch {
                 _uiEvent.emit(UiEvent.Error)
                 delay(1200)
                 if (_avatarState.value == "THINKING") _avatarState.value = "IDLE"
@@ -229,12 +229,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 LearningItem("a30", "غ", "غذا", "audio_a30", "img_a30", "ALPHABET"),
                 LearningItem("a31", "ظ", "ظرف", "audio_a31", "img_a31", "ALPHABET")
             )
-            
+
             val orderedNumbers = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
-            val numberItems = orderedNumbers.mapIndexed { index, num -> 
+            val numberItems = orderedNumbers.mapIndexed { index, num ->
                 LearningItem("n$num", num.toString().toPersianDigit(), num.toPersianWord(), "audio_n$num", "img_n$num", "NUMBER")
             }
-            
+
             repository.insertInitialData(cumulativeAlphabet + numberItems)
         }
     }

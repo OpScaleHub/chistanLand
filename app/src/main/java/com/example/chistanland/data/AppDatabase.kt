@@ -1,4 +1,4 @@
-package com.example.chistanland.data
+package com.github.opscalehub.chistanland.data
 
 import android.content.Context
 import androidx.room.Database

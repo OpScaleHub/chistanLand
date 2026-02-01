@@ -1,4 +1,4 @@
-package com.example.chistanland.ui.theme
+package com.github.opscalehub.chistanland.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

@@ -1,4 +1,4 @@
-package com.example.chistanland.ui.theme
+package com.github.opscalehub.chistanland.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
@@ -6,7 +6,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Replace with a child-friendly font if available in assets, 
+// Replace with a child-friendly font if available in assets,
 // using default for now to ensure compilation.
 val Typography = Typography(
     bodyLarge = TextStyle(

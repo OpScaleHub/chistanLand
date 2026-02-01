@@ -1,4 +1,4 @@
-package com.example.chistanland.data
+package com.github.opscalehub.chistanland.data
 
 import kotlinx.coroutines.flow.Flow
 import java.util.concurrent.TimeUnit
@@ -18,17 +18,17 @@ class LearningRepository(private val learningDao: LearningDao) {
         if (isCorrect) {
             newLevel = (item.level + 1).coerceAtMost(5)
             nextReviewDelay = when (newLevel) {
-                1 -> TimeUnit.MINUTES.toMillis(10) 
-                2 -> TimeUnit.HOURS.toMillis(24)    
-                3 -> TimeUnit.DAYS.toMillis(4)     
-                4 -> TimeUnit.DAYS.toMillis(7)     
-                5 -> Long.MAX_VALUE                
+                1 -> TimeUnit.MINUTES.toMillis(10)
+                2 -> TimeUnit.HOURS.toMillis(24)
+                3 -> TimeUnit.DAYS.toMillis(4)
+                4 -> TimeUnit.DAYS.toMillis(7)
+                5 -> Long.MAX_VALUE
                 else -> 0
             }
         } else {
             // رویکرد مهربانانه: در صورت اشتباه، کودک جریمه سنگین نمی‌شود
             // فقط در همان سطح می‌ماند تا دوباره تمرین کند
-            newLevel = item.level 
+            newLevel = item.level
             nextReviewDelay = 0
         }
 

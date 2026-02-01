@@ -1,4 +1,4 @@
-package com.example.chistanland
+package com.github.opscalehub.chistanland
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -19,12 +19,12 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.chistanland.ui.LearningViewModel
-import com.example.chistanland.ui.screens.HomeScreen
-import com.example.chistanland.ui.screens.IslandMapScreen
-import com.example.chistanland.ui.screens.LearningSessionScreen
-import com.example.chistanland.ui.screens.ParentDashboardScreen
-import com.example.chistanland.ui.theme.ChistanLandTheme
+import com.github.opscalehub.chistanland.ui.LearningViewModel
+import com.github.opscalehub.chistanland.ui.screens.HomeScreen
+import com.github.opscalehub.chistanland.ui.screens.IslandMapScreen
+import com.github.opscalehub.chistanland.ui.screens.LearningSessionScreen
+import com.github.opscalehub.chistanland.ui.screens.ParentDashboardScreen
+import com.github.opscalehub.chistanland.ui.theme.ChistanLandTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
@@ -56,7 +56,7 @@ fun ChistanApp(viewModel: LearningViewModel) {
     val navController = rememberNavController()
 
     NavHost(
-        navController = navController, 
+        navController = navController,
         startDestination = "home",
         enterTransition = { fadeIn(animationSpec = tween(400)) + scaleIn(initialScale = 0.9f) },
         exitTransition = { fadeOut(animationSpec = tween(400)) + scaleOut(targetScale = 1.1f) },

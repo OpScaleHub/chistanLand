@@ -1,4 +1,4 @@
-package com.example.chistanland.ui.screens
+package com.github.opscalehub.chistanland.ui.screens
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.chistanland.ui.theme.*
+import com.github.opscalehub.chistanland.ui.theme.*
 
 @Composable
 fun LearningAvatar(state: String, modifier: Modifier = Modifier) {
@@ -49,7 +49,7 @@ fun LearningAvatar(state: String, modifier: Modifier = Modifier) {
             .shadow(4.dp, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = "🧚", fontSize = 32.sp) 
+        Text(text = "🧚", fontSize = 32.sp)
         Text(
             text = avatarEmoji,
             fontSize = 18.sp,

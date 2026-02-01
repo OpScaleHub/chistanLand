@@ -1,4 +1,4 @@
-package com.example.chistanland.ui.theme
+package com.github.opscalehub.chistanland.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme

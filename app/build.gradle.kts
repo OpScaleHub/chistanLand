@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.chistanland"
+    namespace = "com.github.opscalehub.chistanland"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.chistanland"
+        applicationId = "com.github.opscalehub.chistanland"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

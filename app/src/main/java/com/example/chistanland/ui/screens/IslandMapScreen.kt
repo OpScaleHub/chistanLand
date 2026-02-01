@@ -1,4 +1,4 @@
-package com.example.chistanland.ui.screens
+package com.github.opscalehub.chistanland.ui.screens
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.core.*
@@ -34,9 +34,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.*
-import com.example.chistanland.data.LearningItem
-import com.example.chistanland.ui.LearningViewModel
-import com.example.chistanland.ui.theme.*
+import com.github.opscalehub.chistanland.data.LearningItem
+import com.github.opscalehub.chistanland.ui.LearningViewModel
+import com.github.opscalehub.chistanland.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
@@ -51,7 +51,7 @@ fun IslandMapScreen(
 ) {
     val items by viewModel.filteredItems.collectAsState()
     val category by viewModel.selectedCategory.collectAsState()
-    
+
     val allMastered = remember(items) { items.isNotEmpty() && items.all { it.isMastered } }
     var showFinalCelebration by remember { mutableStateOf(false) }
 
@@ -67,9 +67,9 @@ fun IslandMapScreen(
             .fillMaxSize()
             .background(
                 brush = Brush.verticalGradient(
-                    colors = if (category == "NUMBER") 
+                    colors = if (category == "NUMBER")
                         listOf(Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color.White)
-                    else 
+                    else
                         listOf(SkyBlue.copy(alpha = 0.5f), Color.White)
                 )
             )
@@ -84,7 +84,7 @@ fun IslandMapScreen(
                 onOpenParentPanel = onOpenParentPanel,
                 onBack = onBack
             )
-            
+
             if (items.isEmpty()) {
                 EmptyMapState { viewModel.seedData() }
             } else {
@@ -131,7 +131,7 @@ fun FinalVictoryOverlay(onClose: () -> Unit) {
     val context = LocalContext.current
     val resId = remember { context.resources.getIdentifier("success_fest_anim", "raw", context.packageName) }
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(if (resId != 0) resId else 1))
-    
+
     Box(
         modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.85f)).clickable { onClose() },
         contentAlignment = Alignment.Center
@@ -171,9 +171,9 @@ fun MapHeader(category: String, onOpenParentPanel: () -> Unit, onBack: () -> Uni
 
 @Composable
 fun SagaMap(items: List<LearningItem>, category: String, onStartItem: (LearningItem) -> Unit, onStartReview: (List<LearningItem>) -> Unit) {
-    val firstLockedIndex = remember(items) { 
+    val firstLockedIndex = remember(items) {
         val index = items.indexOfFirst { !it.isMastered }
-        if (index == -1) items.size - 1 else index 
+        if (index == -1) items.size - 1 else index
     }
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = (firstLockedIndex - 1).coerceAtLeast(0))
 
@@ -181,7 +181,7 @@ fun SagaMap(items: List<LearningItem>, category: String, onStartItem: (LearningI
         itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
             val isLocked = index > 0 && !items[index - 1].isMastered
             val isEven = index % 2 == 0
-            
+
             Column(horizontalAlignment = if (isEven) Alignment.Start else Alignment.End) {
                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = if (isEven) Alignment.CenterStart else Alignment.CenterEnd) {
                     if (index < items.size - 1) PathConnection(isEven, category)
@@ -215,7 +215,7 @@ fun PathConnection(isEven: Boolean, category: String) {
             if (isEven) { moveTo(size.width * 0.25f, 0f); cubicTo(size.width * 0.25f, size.height * 0.5f, size.width * 0.75f, size.height * 0.5f, size.width * 0.75f, size.height) }
             else { moveTo(size.width * 0.75f, 0f); cubicTo(size.width * 0.75f, size.height * 0.5f, size.width * 0.25f, size.height * 0.5f, size.width * 0.25f, size.height) }
         }
-        
+
         if (category == "NUMBER") {
             drawPath(path = path, color = Color.Gray.copy(alpha = 0.2f), style = Stroke(width = 12f))
             drawPath(path = path, color = Color.White.copy(alpha = 0.5f), style = Stroke(width = 4f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 20f), 0f)))
@@ -241,10 +241,10 @@ fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modif
             Surface(
                 modifier = Modifier.size(115.dp).shadow(if (isLocked) 0.dp else 12.dp, CircleShape),
                 shape = CircleShape,
-                color = when { 
+                color = when {
                     isLocked -> Color(0xFFE0E0E0)
                     item.isMastered -> Color(0xFFFFD600)
-                    else -> if (item.category == "NUMBER") MangoOrange else PastelGreen 
+                    else -> if (item.category == "NUMBER") MangoOrange else PastelGreen
                 },
                 border = BorderStroke(4.dp, Color.White.copy(alpha = 0.6f))
             ) {
@@ -286,7 +286,7 @@ fun QuantityIndicator(numberChar: String, dotSize: Dp = 12.dp, radiusSize: Dp = 
             "۶" -> 6; "۷" -> 7; "۸" -> 8; "۹" -> 9; else -> 0
         }
     }
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "dots")
     val angle by infiniteTransition.animateFloat(0f, 360f, infiniteRepeatable(tween(10000, easing = LinearEasing)), label = "rotate")
     val pulse by infiniteTransition.animateFloat(0.8f, 1.2f, infiniteRepeatable(tween(1000, easing = EaseInOutSine), RepeatMode.Reverse), label = "pulse")
