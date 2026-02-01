@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -36,6 +37,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.airbnb.lottie.compose.*
 import com.example.chistanland.ui.LearningViewModel
 import com.example.chistanland.ui.theme.*
@@ -131,7 +134,20 @@ fun LearningSessionScreen(
         )) {
             // ساختار چیدمان امن (مکانیزم امنیتی ۱ و ۳)
             Column(modifier = Modifier.fillMaxSize()) {
-                // بخش بالایی اسکرول‌شونده
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack, modifier = Modifier.size(48.dp).background(SkyBlue.copy(alpha = 0.2f), CircleShape)) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "برگشت", tint = SkyBlue)
+                    }
+                    LearningAvatar(state = avatarState, modifier = Modifier.size(64.dp))
+                    StreakIndicator(streak = streak)
+                }
+
+                // بخش میانی اسکرول‌شونده
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -139,19 +155,6 @@ fun LearningSessionScreen(
                         .padding(horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Header
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = onBack, modifier = Modifier.size(48.dp).background(SkyBlue.copy(alpha = 0.2f), CircleShape)) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "برگشت", tint = SkyBlue)
-                        }
-                        LearningAvatar(state = avatarState, modifier = Modifier.size(64.dp))
-                        StreakIndicator(streak = streak)
-                    }
-
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
                         ChickStatus(streak = streak)
                         PlantProgress(level = item.level)
@@ -209,8 +212,6 @@ fun SuccessFestivalOverlay() {
 
 @Composable
 fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () -> Unit, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
     val infiniteTransition = rememberInfiniteTransition(label = "wordCard")
     val floatAnim by infiniteTransition.animateFloat(initialValue = -8f, targetValue = 8f, animationSpec = infiniteRepeatable(tween(2500, easing = EaseInOutSine), RepeatMode.Reverse), label = "float")
 
@@ -221,10 +222,24 @@ fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () ->
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(16.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (imageResId != 0) {
-                    Image(painter = painterResource(id = imageResId), item.word, modifier = Modifier.size(110.dp).clip(RoundedCornerShape(24.dp)))
+                if (item.imageUrl.startsWith("http")) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(item.imageUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = item.word,
+                        modifier = Modifier.size(130.dp).clip(RoundedCornerShape(24.dp)),
+                        contentScale = ContentScale.Fit
+                    )
                 } else {
-                    Text(if (item.category == "NUMBER") "🔢" else "🌟", fontSize = 64.sp)
+                    val context = LocalContext.current
+                    val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
+                    if (imageResId != 0) {
+                        Image(painter = painterResource(id = imageResId), item.word, modifier = Modifier.size(110.dp).clip(RoundedCornerShape(24.dp)))
+                    } else {
+                        Text(if (item.category == "NUMBER") "🔢" else "🌟", fontSize = 64.sp)
+                    }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(item.word, fontSize = 34.sp, fontWeight = FontWeight.Black, color = if (item.category == "NUMBER") MangoOrange else SkyBlue)

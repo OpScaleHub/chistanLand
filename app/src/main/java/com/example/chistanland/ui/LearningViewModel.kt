@@ -96,29 +96,28 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun startReviewSession(allowedItems: List<LearningItem>? = null) {
+    fun startReviewSession(allowedItems: List<LearningItem>? = null, onReady: () -> Unit = {}) {
         val currentCat = _selectedCategory.value ?: "ALPHABET"
         viewModelScope.launch {
             val itemsToReview = repository.getItemsToReviewByCategory(currentCat).first()
             
-            // اگر لیست آیتم‌های مجاز ارسال شده باشد، فقط از آن‌ها استفاده می‌کنیم
             val basePool = if (allowedItems != null) {
-                itemsToReview.filter { it.id in allowedItems.map { it.id } }
+                itemsToReview.filter { item -> allowedItems.any { it.id == item.id } }
             } else {
                 itemsToReview
             }
 
-            // اگر آیتمی برای مرور زمان‌بندی شده نبود، از کل آیتم‌های مجاز که حداقل یک بار یاد گرفته شده‌اند انتخاب کن
             val pool = if (basePool.isNotEmpty()) {
                 basePool
             } else {
                 val fallbackPool = allowedItems ?: allItems.value.filter { it.category == currentCat }
-                fallbackPool.filter { it.level > 1 }
+                fallbackPool.filter { it.level > 1 || it.isMastered }
             }
             
             pool.randomOrNull()?.let {
                 startLearning(it, isReview = true)
                 _uiEvent.emit(UiEvent.StartReviewSession)
+                onReady()
             }
         }
     }
@@ -199,7 +198,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 playSound("success_fest")
                 _uiEvent.emit(UiEvent.Success)
             }
-            delay(2000)
+            delay(2500)
             _currentItem.value = null
             _avatarState.value = "IDLE"
         }
@@ -208,44 +207,56 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     fun seedData() {
         viewModelScope.launch {
             val pedagogicalAlphabet = listOf(
-                LearningItem("a1", "آ", "آب", "audio_a1", "img_a1", "ALPHABET"),
-                LearningItem("a2", "ا", "اسب", "audio_a2", "img_a2", "ALPHABET"),
-                LearningItem("a3", "ب", "بابا", "audio_a3", "img_a3", "ALPHABET"),
-                LearningItem("a11", "د", "درخت", "audio_a11", "img_a11", "ALPHABET"),
-                LearningItem("a29", "م", "موز", "audio_a29", "img_a29", "ALPHABET"),
-                LearningItem("a16", "س", "سیب", "audio_a16", "img_a16", "ALPHABET"),
-                LearningItem("a5", "ت", "توت", "audio_a5", "img_a5", "ALPHABET"),
-                LearningItem("a13", "ر", "روباه", "audio_a13", "img_a13", "ALPHABET"),
-                LearningItem("a30", "ن", "نان", "audio_a30", "img_a30", "ALPHABET"),
-                LearningItem("a14", "ز", "زنبور", "audio_a14", "img_a14", "ALPHABET"),
-                LearningItem("a17", "ش", "شتر", "audio_a17", "img_a17", "ALPHABET"),
-                LearningItem("a26", "ک", "کتاب", "audio_a26", "img_a26", "ALPHABET"),
-                LearningItem("a31", "و", "ورزش", "audio_a31", "img_a31", "ALPHABET"),
-                LearningItem("a4", "پ", "پا", "audio_a4", "img_a4", "ALPHABET"),
-                LearningItem("a27", "گ", "گاو", "audio_a27", "img_a27", "ALPHABET"),
-                LearningItem("a24", "ف", "فیل", "audio_a24", "img_a24", "ALPHABET"),
-                LearningItem("a10", "خ", "خرگوش", "audio_a10", "img_a10", "ALPHABET"),
-                LearningItem("a25", "ق", "قایق", "audio_a25", "img_a25", "ALPHABET"),
-                LearningItem("a28", "ل", "لباس", "audio_a28", "img_a28", "ALPHABET"),
-                LearningItem("a7", "ج", "جوجه", "audio_a7", "img_a7", "ALPHABET"),
-                LearningItem("a32", "ه", "هلو", "audio_a32", "img_a32", "ALPHABET"),
-                LearningItem("a8", "چ", "چای", "audio_a8", "img_a8", "ALPHABET"),
-                LearningItem("a15", "ژ", "ژله", "audio_a15", "img_a15", "ALPHABET"),
-                
-                LearningItem("a18", "ص", "صورت", "audio_a18", "img_a18", "ALPHABET"),
-                LearningItem("a12", "ذ", "ذرت", "audio_a12", "img_a12", "ALPHABET"),
-                LearningItem("a22", "ع", "عینک", "audio_a22", "img_a22", "ALPHABET"),
-                LearningItem("a6", "ث", "ثروت", "audio_a6", "img_a6", "ALPHABET"),
-                LearningItem("a9", "ح", "حلزون", "audio_a9", "img_a9", "ALPHABET"),
-                LearningItem("a19", "ض", "ضامن", "audio_a19", "img_a19", "ALPHABET"),
-                LearningItem("a20", "ط", "طوطی", "audio_a20", "img_a20", "ALPHABET"),
-                LearningItem("a23", "غ", "غذا", "audio_a23", "img_a23", "ALPHABET"),
-                LearningItem("a21", "ظ", "ظرف", "audio_a21", "img_a21", "ALPHABET"),
-                LearningItem("a33", "ی", "یخ", "audio_a33", "img_a33", "ALPHABET")
+                LearningItem("a1", "آ", "آب", "audio_a1", "https://cdn-icons-png.flaticon.com/512/3105/3105807.png", "ALPHABET"),
+                LearningItem("a2", "ا", "اسب", "audio_a2", "https://cdn-icons-png.flaticon.com/512/1998/1998682.png", "ALPHABET"),
+                LearningItem("a3", "ب", "بابا", "audio_a3", "https://cdn-icons-png.flaticon.com/512/4139/4139162.png", "ALPHABET"),
+                LearningItem("a11", "د", "درخت", "audio_a11", "https://cdn-icons-png.flaticon.com/512/489/489969.png", "ALPHABET"),
+                LearningItem("a29", "م", "موز", "audio_a29", "https://cdn-icons-png.flaticon.com/512/2909/2909808.png", "ALPHABET"),
+                LearningItem("a16", "س", "سیب", "audio_a16", "https://cdn-icons-png.flaticon.com/512/415/415733.png", "ALPHABET"),
+                LearningItem("a5", "ت", "توت", "audio_a5", "https://cdn-icons-png.flaticon.com/512/1135/1135540.png", "ALPHABET"),
+                LearningItem("a13", "ر", "روباه", "audio_a13", "https://cdn-icons-png.flaticon.com/512/1998/1998631.png", "ALPHABET"),
+                LearningItem("a30", "ن", "نان", "audio_a30", "https://cdn-icons-png.flaticon.com/512/2965/2965568.png", "ALPHABET"),
+                LearningItem("a14", "ز", "زنبور", "audio_a14", "https://cdn-icons-png.flaticon.com/512/2909/2909772.png", "ALPHABET"),
+                LearningItem("a17", "ش", "شتر", "audio_a17", "https://cdn-icons-png.flaticon.com/512/1998/1998592.png", "ALPHABET"),
+                LearningItem("a26", "ک", "کتاب", "audio_a26", "https://cdn-icons-png.flaticon.com/512/3389/3389081.png", "ALPHABET"),
+                LearningItem("a31", "و", "ورزش", "audio_a31", "https://cdn-icons-png.flaticon.com/512/2964/2964514.png", "ALPHABET"),
+                LearningItem("a4", "پ", "پا", "audio_a4", "https://cdn-icons-png.flaticon.com/512/3063/3063822.png", "ALPHABET"),
+                LearningItem("a27", "گ", "گاو", "audio_a27", "https://cdn-icons-png.flaticon.com/512/1998/1998610.png", "ALPHABET"),
+                LearningItem("a24", "ف", "فیل", "audio_a24", "https://cdn-icons-png.flaticon.com/512/1998/1998616.png", "ALPHABET"),
+                LearningItem("a10", "خ", "خرگوش", "audio_a10", "https://cdn-icons-png.flaticon.com/512/1998/1998762.png", "ALPHABET"),
+                LearningItem("a25", "ق", "قایق", "audio_a25", "https://cdn-icons-png.flaticon.com/512/2964/2964551.png", "ALPHABET"),
+                LearningItem("a28", "ل", "لباس", "audio_a28", "https://cdn-icons-png.flaticon.com/512/3534/3534312.png", "ALPHABET"),
+                LearningItem("a7", "ج", "جوجه", "audio_a7", "https://cdn-icons-png.flaticon.com/512/1998/1998642.png", "ALPHABET"),
+                LearningItem("a32", "ه", "هلو", "audio_a32", "https://cdn-icons-png.flaticon.com/512/2909/2909825.png", "ALPHABET"),
+                LearningItem("a8", "چ", "چای", "audio_a8", "https://cdn-icons-png.flaticon.com/512/3054/3054813.png", "ALPHABET"),
+                LearningItem("a15", "ژ", "ژله", "audio_a15", "https://cdn-icons-png.flaticon.com/512/184/184545.png", "ALPHABET"),
+                LearningItem("a18", "ص", "صورت", "audio_a18", "https://cdn-icons-png.flaticon.com/512/4139/4139153.png", "ALPHABET"),
+                LearningItem("a12", "ذ", "ذرت", "audio_a12", "https://cdn-icons-png.flaticon.com/512/2909/2909795.png", "ALPHABET"),
+                LearningItem("a22", "ع", "عینک", "audio_a22", "https://cdn-icons-png.flaticon.com/512/1253/1253335.png", "ALPHABET"),
+                LearningItem("a6", "ث", "ثروت", "audio_a6", "https://cdn-icons-png.flaticon.com/512/2953/2953361.png", "ALPHABET"),
+                LearningItem("a9", "ح", "حلزون", "audio_a9", "https://cdn-icons-png.flaticon.com/512/1998/1998791.png", "ALPHABET"),
+                LearningItem("a19", "ض", "ضامن", "audio_a19", "https://cdn-icons-png.flaticon.com/512/2312/2312521.png", "ALPHABET"),
+                LearningItem("a20", "ط", "طوطی", "audio_a20", "https://cdn-icons-png.flaticon.com/512/1998/1998733.png", "ALPHABET"),
+                LearningItem("a23", "غ", "غذا", "audio_a23", "https://cdn-icons-png.flaticon.com/512/2737/2737034.png", "ALPHABET"),
+                LearningItem("a21", "ظ", "ظرف", "audio_a21", "https://cdn-icons-png.flaticon.com/512/184/184535.png", "ALPHABET"),
+                LearningItem("a33", "ی", "یخ", "audio_a33", "https://cdn-icons-png.flaticon.com/512/2910/2910006.png", "ALPHABET")
             )
             
+            val numberImages = listOf(
+                "https://cdn-icons-png.flaticon.com/512/3570/3570095.png",
+                "https://cdn-icons-png.flaticon.com/512/3570/3570096.png",
+                "https://cdn-icons-png.flaticon.com/512/3570/3570097.png",
+                "https://cdn-icons-png.flaticon.com/512/3570/3570098.png",
+                "https://cdn-icons-png.flaticon.com/512/3570/3570099.png",
+                "https://cdn-icons-png.flaticon.com/512/3570/3570100.png",
+                "https://cdn-icons-png.flaticon.com/512/3570/3570101.png",
+                "https://cdn-icons-png.flaticon.com/512/3570/3570102.png",
+                "https://cdn-icons-png.flaticon.com/512/3570/3570103.png",
+                "https://cdn-icons-png.flaticon.com/512/3570/3570104.png"
+            )
+
             val numberItems = (0..9).map { 
-                LearningItem("n$it", it.toString().toPersianDigit(), it.toPersianWord(), "audio_n$it", "img_n$it", "NUMBER") 
+                LearningItem("n$it", it.toString().toPersianDigit(), it.toPersianWord(), "audio_n$it", numberImages[it], "NUMBER")
             }
             
             repository.insertInitialData(pedagogicalAlphabet + numberItems)
