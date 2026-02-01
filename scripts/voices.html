@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پنل ضبط دارایی‌های صوتی - چستان‌آباد</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;400;700&display=swap');
+
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .card-done {
+            background-color: #dcfce7 !important;
+            border-color: #22c55e !important;
+            opacity: 0.8;
+        }
+
+        .copied-tip {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+
+<body class="p-4 md:p-8">
+
+    <header class="max-w-6xl mx-auto mb-8 text-center">
+        <h1 class="text-3xl font-bold text-indigo-700 mb-2">پنل اختصاصی گوینده - چستان‌آباد</h1>
+        <p class="text-gray-600">لحن پیشنهادی: <span class="font-bold text-pink-600">آرام، مهربان و تشویقی</span></p>
+
+        <div class="mt-6 flex flex-wrap justify-center gap-2">
+            <button onclick="filterCategory('all')" id="btn-all"
+                class="px-4 py-2 bg-indigo-600 text-white rounded-full transition shadow-md">همه</button>
+            <button onclick="filterCategory('avatar')"
+                class="px-4 py-2 bg-white border border-indigo-200 rounded-full hover:bg-indigo-50 transition text-gray-700">راهنماهای
+                آواتار</button>
+            <button onclick="filterCategory('alphabet')"
+                class="px-4 py-2 bg-white border border-indigo-200 rounded-full hover:bg-indigo-50 transition text-gray-700">الفبا
+                (صداکشی)</button>
+            <button onclick="filterCategory('numbers')"
+                class="px-4 py-2 bg-white border border-indigo-200 rounded-full hover:bg-indigo-50 transition text-gray-700">اعداد</button>
+            <button onclick="filterCategory('words')"
+                class="px-4 py-2 bg-white border border-indigo-200 rounded-full hover:bg-indigo-50 transition text-gray-700">کلمات
+                الفبا</button>
+            <button onclick="filterCategory('word_nums')"
+                class="px-4 py-2 bg-white border border-indigo-200 rounded-full hover:bg-indigo-50 transition text-gray-700">کلمات
+                اعداد</button>
+            <button onclick="filterCategory('sfx')"
+                class="px-4 py-2 bg-white border border-indigo-200 rounded-full hover:bg-indigo-50 transition text-gray-700">افکت‌ها
+                (SFX)</button>
+        </div>
+
+        <div class="mt-4">
+            <button onclick="resetStorage()" class="text-sm text-red-500 hover:text-red-700 underline">پاکسازی تمامی
+                تیک‌های ضبط شده</button>
+        </div>
+    </header>
+
+    <main id="assets-grid" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- کارتها توسط جاوااسکریپت تزریق می‌شوند -->
+    </main>
+
+    <div id="copy-toast" class="copied-tip">نام فایل کپی شد!</div>
+
+    <script>
+        const STORAGE_KEY = 'chestanaabaad_recording_progress';
+
+        const audioAssets = [
+            // Avatar Instructions
+            { id: 'inst_type_word', text: 'قهرمان من، بیا این کلمه رو با هم بنویسیم!', category: 'avatar', note: 'شروع مرحله' },
+            { id: 'inst_find_char', text: 'می‌تونی حرفی که دنبالشیم رو روی دکمه‌ها پیدا کنی؟', category: 'avatar', note: 'راهنما/مکث' },
+            { id: 'inst_category', text: 'کدوم جزیره رو برای ماجراجویی امروز انتخاب می‌کنی؟', category: 'avatar', note: 'انتخاب بخش' },
+            { id: 'inst_review', text: 'وقتشه بریم شهربازی و چیزهایی که یاد گرفتیم رو مرور کنیم!', category: 'avatar', note: 'نقشه سگا' },
+
+            // Alphabet Phonics
+            { id: 'audio_a1', text: 'بـ ... مثل آب', category: 'alphabet' },
+            { id: 'audio_a2', text: 'آ ... مثل بابا', category: 'alphabet' },
+            { id: 'audio_a3', text: 'د ... مثل باد', category: 'alphabet' },
+            { id: 'audio_a4', text: 'مـ ... مثل بام', category: 'alphabet' },
+            { id: 'audio_a5', text: 'سـ ... مثل سبد', category: 'alphabet' },
+            { id: 'audio_a6', text: 'نـ ... مثل نان', category: 'alphabet' },
+            { id: 'audio_a7', text: 'ر ... مثل ابر', category: 'alphabet' },
+            { id: 'audio_a8', text: 'تـ ... مثل دست', category: 'alphabet' },
+            { id: 'audio_a9', text: 'و ... مثل بوم', category: 'alphabet' },
+            { id: 'audio_a10', text: 'یـ ... مثل سیب', category: 'alphabet' },
+            { id: 'audio_a11', text: 'ز ... مثل باز', category: 'alphabet' },
+            { id: 'audio_a12', text: 'شـ ... مثل آش', category: 'alphabet' },
+            { id: 'audio_a13', text: 'کـ ... مثل کتاب', category: 'alphabet' },
+            { id: 'audio_a14', text: 'گـ ... مثل سگ', category: 'alphabet' },
+            { id: 'audio_a15', text: 'فـ ... مثل برف', category: 'alphabet' },
+            { id: 'audio_a16', text: 'خـ ... مثل شاخ', category: 'alphabet' },
+            { id: 'audio_a17', text: 'قـ ... مثل قایق', category: 'alphabet' },
+            { id: 'audio_a18', text: 'لـ ... مثل لباس', category: 'alphabet' },
+            { id: 'audio_a19', text: 'جـ ... مثل تاج', category: 'alphabet' },
+            { id: 'audio_a20', text: 'چـ ... مثل چای', category: 'alphabet' },
+            { id: 'audio_a21', text: 'هـ ... مثل کوه', category: 'alphabet' },
+            { id: 'audio_a22', text: 'ژ ... مثل ژله', category: 'alphabet' },
+            { id: 'audio_a23', text: 'صـ ... مثل صورت', category: 'alphabet' },
+            { id: 'audio_a24', text: 'ذ ... مثل ذرت', category: 'alphabet' },
+            { id: 'audio_a25', text: 'عـ ... مثل عینک', category: 'alphabet' },
+            { id: 'audio_a26', text: 'ثـ ... مثل ثروت', category: 'alphabet' },
+            { id: 'audio_a27', text: 'حـ ... مثل حلزون', category: 'alphabet' },
+            { id: 'audio_a28', text: 'ضـ ... مثل ضامن', category: 'alphabet' },
+            { id: 'audio_a29', text: 'ط ... مثل طوطی', category: 'alphabet' },
+            { id: 'audio_a30', text: 'غـ ... مثل غذا', category: 'alphabet' },
+            { id: 'audio_a31', text: 'ظ ... مثل ظرف', category: 'alphabet' },
+
+            // Numbers
+            { id: 'audio_n0', text: 'صفر', category: 'numbers' },
+            { id: 'audio_n1', text: 'یک', category: 'numbers' },
+            { id: 'audio_n2', text: 'دو', category: 'numbers' },
+            { id: 'audio_n3', text: 'سه', category: 'numbers' },
+            { id: 'audio_n4', text: 'چهار', category: 'numbers' },
+            { id: 'audio_n5', text: 'پنج', category: 'numbers' },
+            { id: 'audio_n6', text: 'شش', category: 'numbers' },
+            { id: 'audio_n7', text: 'هفت', category: 'numbers' },
+            { id: 'audio_n8', text: 'هشت', category: 'numbers' },
+            { id: 'audio_n9', text: 'نه', category: 'numbers' },
+
+            // Word Assets
+            { id: 'word_ab', text: 'آب', category: 'words' },
+            { id: 'word_baba', text: 'بابا', category: 'words' },
+            { id: 'word_bad', text: 'باد', category: 'words' },
+            { id: 'word_bam', text: 'بام', category: 'words' },
+            { id: 'word_sabad', text: 'سبد', category: 'words' },
+            { id: 'word_nan', text: 'نان', category: 'words' },
+            { id: 'word_abr', text: 'ابر', category: 'words' },
+            { id: 'word_dast', text: 'دست', category: 'words' },
+            { id: 'word_boom', text: 'بوم', category: 'words' },
+            { id: 'word_sib', text: 'سیب', category: 'words' },
+            { id: 'word_baz', text: 'باز', category: 'words' },
+            { id: 'word_ash', text: 'آش', category: 'words' },
+            { id: 'word_ketab', text: 'کتاب', category: 'words' },
+            { id: 'word_sag', text: 'سگ', category: 'words' },
+            { id: 'word_barf', text: 'برف', category: 'words' },
+            { id: 'word_shakh', text: 'شاخ', category: 'words' },
+            { id: 'word_ghaayeg', text: 'قایق', category: 'words' },
+            { id: 'word_lebas', text: 'لباس', category: 'words' },
+            { id: 'word_taj', text: 'تاج', category: 'words' },
+            { id: 'word_chai', text: 'چای', category: 'words' },
+            { id: 'word_kooh', text: 'کوه', category: 'words' },
+            { id: 'word_zhele', text: 'ژله', category: 'words' },
+            { id: 'word_soorat', text: 'صورت', category: 'words' },
+            { id: 'word_zorrat', text: 'ذرت', category: 'words' },
+            { id: 'word_aynak', text: 'عینک', category: 'words' },
+            { id: 'word_sarvat', text: 'ثروت', category: 'words' },
+            { id: 'word_halazoon', text: 'حلزون', category: 'words' },
+            { id: 'word_zaamen', text: 'ضامن', category: 'words' },
+            { id: 'word_tooti', text: 'طوطی', category: 'words' },
+            { id: 'word_ghaza', text: 'غذا', category: 'words' },
+            { id: 'word_zarf', text: 'ظرف', category: 'words' },
+
+            // Number Words
+            { id: 'word_num_0', text: 'صفر', category: 'word_nums' },
+            { id: 'word_num_1', text: 'یک', category: 'word_nums' },
+            { id: 'word_num_2', text: 'دو', category: 'word_nums' },
+            { id: 'word_num_3', text: 'سه', category: 'word_nums' },
+            { id: 'word_num_4', text: 'چهار', category: 'word_nums' },
+            { id: 'word_num_5', text: 'پنج', category: 'word_nums' },
+            { id: 'word_num_6', text: 'شش', category: 'word_nums' },
+            { id: 'word_num_7', text: 'هفت', category: 'word_nums' },
+            { id: 'word_num_8', text: 'هشت', category: 'word_nums' },
+            { id: 'word_num_9', text: 'نه', category: 'word_nums' },
+
+            // SFX
+            { id: 'pop_sound', text: '[افکت صدای پاپ حبابی]', category: 'sfx', note: 'بدون کلام' },
+            { id: 'error_sound', text: '[صدای اوه-اوه ملایم]', category: 'sfx', note: 'خطای تایپ' },
+            { id: 'success_fest', text: '[صدای تشویق و پیروزی]', category: 'sfx', note: 'پایان موفق' },
+            { id: 'level_up', text: '[صدای جادویی صعودی]', category: 'sfx', note: 'تکامل/رشد' },
+            { id: 'island_unlock', text: '[صدای باز شدن صندوقچه]', category: 'sfx', note: 'آنلاک مرحله' }
+        ];
+
+        let completedIds = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+        function renderAssets(filter = 'all') {
+            const grid = document.getElementById('assets-grid');
+            grid.innerHTML = '';
+
+            const filtered = filter === 'all'
+                ? audioAssets
+                : audioAssets.filter(a => a.category === filter);
+
+            filtered.forEach(asset => {
+                const isDone = completedIds.includes(asset.id);
+                const card = document.createElement('div');
+                card.className = `p-5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition cursor-default ${isDone ? 'card-done' : ''}`;
+                card.id = `card-${asset.id}`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-500 cursor-pointer hover:bg-gray-200" title="کپی نام فایل" onclick="copyName('${asset.id}')">
+                            ${asset.id}
+                        </span>
+                        <input type="checkbox" class="w-5 h-5 accent-green-600 cursor-pointer"
+                            ${isDone ? 'checked' : ''}
+                            onchange="toggleDone('${asset.id}', this)">
+                    </div>
+                    <div class="text-xl font-bold text-gray-800 mb-2 leading-relaxed">
+                        ${asset.text}
+                    </div>
+                    ${asset.note ? `<div class="text-sm text-indigo-500 font-light">📝 ${asset.note}</div>` : ''}
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function toggleDone(id, checkbox) {
+            const card = document.getElementById(`card-${id}`);
+            if (checkbox.checked) {
+                card.classList.add('card-done');
+                if (!completedIds.includes(id)) completedIds.push(id);
+            } else {
+                card.classList.remove('card-done');
+                completedIds = completedIds.filter(item => item !== id);
+            }
+            saveToStorage();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(completedIds));
+        }
+
+        function resetStorage() {
+            if (confirm('آیا مطمئن هستید که می‌خواهید پیشرفت ضبط را صفر کنید؟')) {
+                completedIds = [];
+                localStorage.removeItem(STORAGE_KEY);
+                renderAssets();
+            }
+        }
+
+        function copyName(text) {
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+
+            const toast = document.getElementById('copy-toast');
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 1500);
+        }
+
+        function filterCategory(cat) {
+            renderAssets(cat);
+            const buttons = document.querySelectorAll('header button');
+            buttons.forEach(btn => {
+                const onclick = btn.getAttribute('onclick');
+                if (onclick && onclick.includes(`'${cat}'`)) {
+                    btn.className = "px-4 py-2 bg-indigo-600 text-white rounded-full transition shadow-md";
+                } else if (onclick && onclick.includes('filterCategory')) {
+                    btn.className = "px-4 py-2 bg-white border border-indigo-200 rounded-full hover:bg-indigo-50 transition text-gray-700";
+                }
+            });
+        }
+
+        window.onload = () => renderAssets();
+    </script>
+</body>
+
+</html>
