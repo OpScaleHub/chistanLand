@@ -40,7 +40,7 @@ fun HomeScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "چستان‌آباد",
+                text = "چیستان‌آباد",
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Black,
                 color = DeepOcean,
