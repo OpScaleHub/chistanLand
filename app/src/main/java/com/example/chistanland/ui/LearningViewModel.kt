@@ -33,11 +33,9 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val _typedText = MutableStateFlow("")
     val typedText: StateFlow<String> = _typedText.asStateFlow()
 
-    // Now tracking only correct steps to show green dots
     private val _charStatus = MutableStateFlow<List<Boolean>>(emptyList())
     val charStatus: StateFlow<List<Boolean>> = _charStatus.asStateFlow()
 
-    // To keep track if the child made any mistake for the current word
     private var hasErrorInCurrentWord: Boolean = false
 
     private val _streak = MutableStateFlow(0)
@@ -58,6 +56,8 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val fullAlphabet = listOf(
         "آ", "ا", "ب", "پ", "ت", "ث", "ج", "چ", "ح", "خ", "د", "ذ", "ر", "ز", "ژ", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ک", "گ", "ل", "م", "ن", "و", "ه", "ی"
     )
+    
+    private val persianDigits = listOf("۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹")
 
     fun selectCategory(category: String?) {
         _selectedCategory.value = category
@@ -68,35 +68,42 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _typedText.value = ""
         _charStatus.value = emptyList()
         hasErrorInCurrentWord = false
-        generateAdaptiveKeyboard(item.word, item.category)
+        generateAdaptiveKeyboard(item)
         playSound(item.phonetic)
     }
 
-    private fun generateAdaptiveKeyboard(word: String, category: String) {
-        // Uniform logic for both categories: Keyboard only contains alphabet letters to spell names
-        val wordChars = word.map { it.toString() }.toSet()
-        val distractorsCount = (10 - wordChars.size).coerceAtLeast(4)
-        val distractors = fullAlphabet.filterNot { wordChars.contains(it) }
-            .shuffled()
-            .take(distractorsCount)
-        
-        _keyboardKeys.value = (wordChars + distractors).shuffled()
+    private fun generateAdaptiveKeyboard(item: LearningItem) {
+        if (item.category == "NUMBER") {
+            // For numbers, always show all digits 0-9 in order or shuffled
+            _keyboardKeys.value = persianDigits
+        } else {
+            // For alphabet, show word characters + random distractors
+            val wordChars = item.word.map { it.toString() }.toSet()
+            val distractorsCount = (10 - wordChars.size).coerceAtLeast(4)
+            val distractors = fullAlphabet.filterNot { wordChars.contains(it) }
+                .shuffled()
+                .take(distractorsCount)
+            
+            _keyboardKeys.value = (wordChars + distractors).shuffled()
+        }
     }
 
     fun onCharTyped(char: String) {
         val current = _currentItem.value ?: return
-        if (_typedText.value.length >= current.word.length) return
+        
+        // Logical Target: For numbers use 'character' (the digit), for others use 'word'
+        val targetFullString = if (current.category == "NUMBER") current.character else current.word
+        
+        if (_typedText.value.length >= targetFullString.length) return
 
-        val targetChar = current.word[_typedText.value.length].toString()
+        val targetChar = targetFullString[_typedText.value.length].toString()
         
         if (char == targetChar) {
-            // Correct hit: Advance
             _typedText.value += char
             _charStatus.value = _charStatus.value + true
             playSound("pop_sound")
 
-            // Check if word is finished
-            if (_typedText.value.length == current.word.length) {
+            if (_typedText.value.length == targetFullString.length) {
                 if (!hasErrorInCurrentWord) {
                     _streak.value += 1
                     completeLevel(true)
@@ -106,7 +113,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 }
             }
         } else {
-            // Wrong hit: Shake and block
             hasErrorInCurrentWord = true
             viewModelScope.launch { _uiEvent.emit(UiEvent.Error) }
             playSound("error_sound")
@@ -149,6 +155,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     fun seedData() {
         viewModelScope.launch {
+            // Ensure data is seeded only once or handle updates
             val alphabetItems = listOf(
                 LearningItem("a1", "آ", "آب", "audio_a1", "img_a1", "ALPHABET"),
                 LearningItem("a2", "ا", "اسب", "audio_a2", "img_a2", "ALPHABET"),
