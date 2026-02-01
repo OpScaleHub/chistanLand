@@ -50,11 +50,10 @@ fun LearningSessionScreen(
     val avatarState by viewModel.avatarState.collectAsState()
     val view = LocalView.current
     val configuration = LocalConfiguration.current
-    val screenHeight = configuration.screenHeightDp.dp
-
+    val scrollState = rememberScrollState()
+    
     val shakeOffset = remember { Animatable(0f) }
     val levelDownY = remember { Animatable(0f) }
-    val scrollState = rememberScrollState()
     
     var showHint by remember { mutableStateOf(false) }
     var hintBlocked by remember { mutableStateOf(false) }
@@ -109,7 +108,10 @@ fun LearningSessionScreen(
     }
 
     val item = currentItem!!
-    val targetChar = item.word.getOrNull(typedText.length)?.toString() ?: ""
+    // Optimization: Use derivedStateOf for calculations depending on other states
+    val targetChar by remember(typedText) {
+        derivedStateOf { item.word.getOrNull(typedText.length)?.toString() ?: "" }
+    }
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -121,7 +123,7 @@ fun LearningSessionScreen(
                             colors = listOf(SkyBlue.copy(alpha = 0.4f), Color.White)
                         )
                     )
-                    .verticalScroll(scrollState) // اضافه کردن قابلیت اسکرول برای صفحات کوچک
+                    .verticalScroll(scrollState)
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -148,7 +150,10 @@ fun LearningSessionScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
-                    modifier = Modifier.fillMaxWidth().graphicsLayer(translationY = levelDownY.value),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        // Optimization: Use graphicsLayer lambda to avoid recomposition during animation
+                        .graphicsLayer { translationY = levelDownY.value },
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.Bottom
                 ) {
@@ -161,7 +166,7 @@ fun LearningSessionScreen(
                 WordCard(
                     word = item.word,
                     onPlaySound = { viewModel.startLearning(item) },
-                    modifier = Modifier.graphicsLayer(translationX = shakeOffset.value)
+                    modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
                 )
 
                 Spacer(modifier = Modifier.height(40.dp))
@@ -170,18 +175,14 @@ fun LearningSessionScreen(
                     targetWord = item.word,
                     typedText = typedText,
                     charStatus = charStatus,
-                    modifier = Modifier.graphicsLayer(translationX = shakeOffset.value)
+                    modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
                 )
 
-                // در حالت لنداسکیپ یا گوشی‌های خیلی کوتاه، فاصله را منعطف می‌کنیم
                 Spacer(modifier = Modifier.heightIn(min = 32.dp).weight(1f))
 
                 KidKeyboard(
                     keys = keyboardKeys,
-                    onKeyClick = { char ->
-                        showHint = false
-                        viewModel.onCharTyped(char)
-                    },
+                    onKeyClick = viewModel::onCharTyped, // Optimization: Stable function reference
                     targetChar = targetChar,
                     showHint = showHint && !hintBlocked
                 )
@@ -246,7 +247,7 @@ fun WordCard(word: String, onPlaySound: () -> Unit, modifier: Modifier = Modifie
     Card(
         modifier = modifier
             .sizeIn(minWidth = 200.dp, minHeight = 200.dp, maxWidth = 260.dp, maxHeight = 260.dp)
-            .graphicsLayer(translationY = floatAnim)
+            .graphicsLayer { translationY = floatAnim }
             .clickable { onPlaySound() }
             .shadow(20.dp, RoundedCornerShape(48.dp)),
         shape = RoundedCornerShape(48.dp),
@@ -265,11 +266,17 @@ fun WordCard(word: String, onPlaySound: () -> Unit, modifier: Modifier = Modifie
 
 @Composable
 fun StreakIndicator(streak: Int) {
-    val scale by animateFloatAsState(targetValue = if (streak > 0) 1.2f else 1f)
+    val scale by animateFloatAsState(targetValue = if (streak > 0) 1.2f else 1f, label = "streakScale")
     Surface(
         color = Color.White,
         shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale).border(2.5.dp, MangoOrange.copy(alpha = 0.7f), RoundedCornerShape(24.dp)).shadow(4.dp, RoundedCornerShape(24.dp))
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .border(2.5.dp, MangoOrange.copy(alpha = 0.7f), RoundedCornerShape(24.dp))
+            .shadow(4.dp, RoundedCornerShape(24.dp))
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = MangoOrange, modifier = Modifier.size(24.dp))
@@ -297,7 +304,18 @@ fun ChickStatus(streak: Int) {
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            modifier = Modifier.size(64.dp).graphicsLayer(scaleX = pulse, scaleY = pulse).background(brush = Brush.radialGradient(colors = listOf(Color.Yellow.copy(alpha = 0.4f), Color.Transparent)), shape = CircleShape),
+            modifier = Modifier
+                .size(64.dp)
+                .graphicsLayer {
+                    scaleX = pulse
+                    scaleY = pulse
+                }
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color.Yellow.copy(alpha = 0.4f), Color.Transparent)
+                    ), 
+                    shape = CircleShape
+                ),
             contentAlignment = Alignment.Center
         ) {
             Text(text = chickEmoji, fontSize = 40.sp)
@@ -308,7 +326,7 @@ fun ChickStatus(streak: Int) {
 
 @Composable
 fun PlantProgress(level: Int) {
-    val progressSize by animateDpAsState(targetValue = (level * 15).dp.coerceAtMost(80.dp))
+    val progressSize by animateDpAsState(targetValue = (level * 15).dp.coerceAtMost(80.dp), label = "plantGrowth")
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(modifier = Modifier.height(100.dp).width(60.dp), contentAlignment = Alignment.BottomCenter) {
@@ -340,10 +358,19 @@ fun WordDisplay(targetWord: String, typedText: String, charStatus: List<Boolean>
             }
             val displayText = if (isTyped) typedText[index].toString() else char.toString()
             val textAlpha = if (isTyped) 1f else 0.5f
-            val scale by animateFloatAsState(if (isTyped) 1.25f else 1f)
+            val scale by animateFloatAsState(if (isTyped) 1.25f else 1f, label = "charScale")
 
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 4.dp)) {
-                Text(text = displayText, fontSize = 42.sp, fontWeight = FontWeight.Black, color = color.copy(alpha = textAlpha), modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale))
+                Text(
+                    text = displayText, 
+                    fontSize = 42.sp, 
+                    fontWeight = FontWeight.Black, 
+                    color = color.copy(alpha = textAlpha), 
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                )
                 Box(modifier = Modifier.width(32.dp).height(6.dp).background(color, RoundedCornerShape(3.dp)))
             }
         }
@@ -369,9 +396,21 @@ fun KidKeyboard(keys: List<String>, onKeyClick: (String) -> Unit, targetChar: St
 fun KeyButton(char: String, onClick: () -> Unit, isHighlighted: Boolean, modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "key")
     val scale by infiniteTransition.animateFloat(initialValue = 1f, targetValue = if (isHighlighted) 1.1f else 1f, animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "scale")
-    val animatedBgColor by animateColorAsState(targetValue = if (isHighlighted) Color(0xFFFFD600) else MangoOrange)
+    val animatedBgColor by animateColorAsState(targetValue = if (isHighlighted) Color(0xFFFFD600) else MangoOrange, label = "keyColor")
 
-    Surface(modifier = modifier.aspectRatio(1.1f).widthIn(max = 64.dp).graphicsLayer(scaleX = scale, scaleY = scale).clickable { onClick() }.shadow(if (isHighlighted) 10.dp else 2.dp, RoundedCornerShape(16.dp)), shape = RoundedCornerShape(16.dp), color = animatedBgColor) {
+    Surface(
+        modifier = modifier
+            .aspectRatio(1.1f)
+            .widthIn(max = 64.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable { onClick() }
+            .shadow(if (isHighlighted) 10.dp else 2.dp, RoundedCornerShape(16.dp)), 
+        shape = RoundedCornerShape(16.dp), 
+        color = animatedBgColor
+    ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Text(text = char, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = if (isHighlighted) DeepOcean else Color.White)
         }
