@@ -40,7 +40,7 @@ fun HomeScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "چستان‌لند",
+                text = "چستان‌آباد",
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Black,
                 color = DeepOcean,
@@ -64,9 +64,9 @@ fun HomeScreen(
                 color = MangoOrange,
                 onClick = { onSelectCategory("NUMBER") }
             )
-            
+
             Spacer(modifier = Modifier.height(64.dp))
-            
+
             // Fixed Parent Gate: Now actually responds to long press
             Text(
                 text = "تنظیمات والدین (لمس طولانی)",
@@ -82,7 +82,7 @@ fun HomeScreen(
                     .padding(8.dp)
             )
         }
-        
+
         // Hidden/Small Parent Gate (Backup/Secondary)
         Surface(
             modifier = Modifier
@@ -132,9 +132,9 @@ fun CategoryCard(
                     Text(text = icon, fontSize = 40.sp)
                 }
             }
-            
+
             Spacer(modifier = Modifier.width(20.dp))
-            
+
             Column {
                 Text(
                     text = title,

@@ -40,17 +40,17 @@ fun ParentDashboardScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { 
+                title = {
                     Text(
-                        "پنل نظارتی والدین", 
+                        "پنل نظارتی والدین",
                         fontWeight = FontWeight.Black,
                         color = DeepOcean
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "برگشت",
                             tint = DeepOcean
                         )
@@ -165,7 +165,7 @@ fun ProgressSummaryRow(items: List<com.example.chistanland.data.LearningItem>) {
                 color = DeepOcean
             )
             Text(
-                text = "$mastered از $total حرف در حافظه بلندمدت",
+                text = "$mastered از $total حرف در حافظه بآبادمدت",
                 fontSize = 14.sp,
                 color = DeepOcean.copy(alpha = 0.7f)
             )
@@ -192,8 +192,8 @@ fun NarrativeCard(
                     shape = CircleShape
                 ) {
                     Icon(
-                        Icons.Default.TrendingUp, 
-                        contentDescription = null, 
+                        Icons.Default.TrendingUp,
+                        contentDescription = null,
                         tint = MangoOrange,
                         modifier = Modifier.padding(8.dp).size(20.dp)
                     )
@@ -214,9 +214,9 @@ fun NarrativeCard(
                 color = DeepOcean,
                 textAlign = TextAlign.Justify
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Button(
                 onClick = onToggleData,
                 colors = ButtonDefaults.buttonColors(
@@ -228,7 +228,7 @@ fun NarrativeCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        if (isDataVisible) Icons.Default.Star else Icons.Default.Info, 
+                        if (isDataVisible) Icons.Default.Star else Icons.Default.Info,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -269,14 +269,14 @@ fun RawDataItem(item: com.example.chistanland.data.LearningItem) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = item.word, fontWeight = FontWeight.Bold, color = DeepOcean)
                 Text(
-                    text = "آخرین تمرین: ${if(item.lastReviewTime == 0L) "هرگز" else "اخیراً"}", 
-                    fontSize = 12.sp, 
+                    text = "آخرین تمرین: ${if(item.lastReviewTime == 0L) "هرگز" else "اخیراً"}",
+                    fontSize = 12.sp,
                     color = Color.Gray
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "سطح ${item.level}", 
+                    text = "سطح ${item.level}",
                     color = if(item.isMastered) MangoOrange else DeepOcean,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
