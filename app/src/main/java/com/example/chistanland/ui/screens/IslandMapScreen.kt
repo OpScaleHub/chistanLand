@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
@@ -33,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.*
@@ -40,6 +42,8 @@ import com.example.chistanland.data.LearningItem
 import com.example.chistanland.ui.LearningViewModel
 import com.example.chistanland.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlin.math.cos
+import kotlin.math.sin
 
 @Composable
 fun IslandMapScreen(
@@ -68,12 +72,16 @@ fun IslandMapScreen(
             .background(
                 brush = Brush.verticalGradient(
                     colors = if (category == "NUMBER") 
-                        listOf(MangoOrange.copy(alpha = 0.2f), Color.White)
+                        listOf(Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color.White)
                     else 
                         listOf(SkyBlue.copy(alpha = 0.5f), Color.White)
                 )
             )
     ) {
+        if (category == "NUMBER") {
+            NumberPeakDecorations()
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             MapHeader(
                 category = category ?: "",
@@ -95,33 +103,26 @@ fun IslandMapScreen(
 }
 
 @Composable
+fun NumberPeakDecorations() {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Text("☁️", Modifier.offset(x = 20.dp, y = 100.dp).alpha(0.6f), fontSize = 40.sp)
+        Text("☁️", Modifier.align(Alignment.TopEnd).offset(x = (-30).dp, y = 180.dp).alpha(0.4f), fontSize = 50.sp)
+        Text("❄️", Modifier.offset(x = 100.dp, y = 300.dp).alpha(0.3f), fontSize = 20.sp)
+    }
+}
+
+@Composable
 fun EmptyMapState(onSeed: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
-            Text(
-                "هنوز چیزی اینجا نیست!",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Black,
-                color = DeepOcean,
-                textAlign = TextAlign.Center
-            )
+            Text("هنوز چیزی اینجا نیست!", fontSize = 24.sp, fontWeight = FontWeight.Black, color = DeepOcean, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                "برای شروع یادگیری، دکمه زیر رو بزن تا جزیره‌ها ظاهر بشن.",
-                fontSize = 16.sp,
-                color = DeepOcean.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center
-            )
+            Text("برای شروع یادگیری، دکمه زیر رو بزن تا جزیره‌ها ظاهر بشن.", fontSize = 16.sp, color = DeepOcean.copy(alpha = 0.7f), textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(32.dp))
-            Button(
-                onClick = onSeed,
-                colors = ButtonDefaults.buttonColors(containerColor = PastelGreen),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.height(56.dp)
-            ) {
+            Button(onClick = onSeed, colors = ButtonDefaults.buttonColors(containerColor = PastelGreen), shape = RoundedCornerShape(16.dp), modifier = Modifier.height(56.dp)) {
                 Text("شروع ماجراجویی", fontWeight = FontWeight.Bold, fontSize = 18.sp)
             }
         }
@@ -145,12 +146,7 @@ fun FinalVictoryOverlay(onClose: () -> Unit) {
             Text("🎉 قهرمان الفبا! 🎉", fontSize = 48.sp, fontWeight = FontWeight.Black, color = Color.White, textAlign = TextAlign.Center)
             Text("تو تمام نشانه‌ها رو با موفقیت یاد گرفتی!", fontSize = 20.sp, color = MangoOrange, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 16.dp))
             Spacer(modifier = Modifier.height(48.dp))
-            Button(
-                onClick = onClose,
-                colors = ButtonDefaults.buttonColors(containerColor = PastelGreen),
-                shape = RoundedCornerShape(24.dp),
-                modifier = Modifier.height(64.dp).fillMaxWidth(0.7f)
-            ) {
+            Button(onClick = onClose, colors = ButtonDefaults.buttonColors(containerColor = PastelGreen), shape = RoundedCornerShape(24.dp), modifier = Modifier.height(64.dp).fillMaxWidth(0.7f)) {
                 Text("بسیار عالی!", fontWeight = FontWeight.Black, fontSize = 20.sp)
             }
         }
@@ -188,7 +184,7 @@ fun SagaMap(items: List<LearningItem>, category: String, onStartItem: (LearningI
             
             Column(horizontalAlignment = if (isEven) Alignment.Start else Alignment.End) {
                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = if (isEven) Alignment.CenterStart else Alignment.CenterEnd) {
-                    if (index < items.size - 1) PathConnection(isEven)
+                    if (index < items.size - 1) PathConnection(isEven, category)
                     IslandNode(item = item, isLocked = isLocked, modifier = Modifier.padding(horizontal = 40.dp), onClick = { onStartItem(item) })
                 }
                 if (category == "ALPHABET" && (index + 1) % 3 == 0 && index < items.size - 1) {
@@ -213,13 +209,19 @@ fun AmusementParkNode(isLocked: Boolean, modifier: Modifier, onClick: () -> Unit
 }
 
 @Composable
-fun PathConnection(isEven: Boolean) {
+fun PathConnection(isEven: Boolean, category: String) {
     Canvas(modifier = Modifier.fillMaxWidth().height(140.dp).offset(y = 90.dp)) {
         val path = Path().apply {
             if (isEven) { moveTo(size.width * 0.25f, 0f); cubicTo(size.width * 0.25f, size.height * 0.5f, size.width * 0.75f, size.height * 0.5f, size.width * 0.75f, size.height) }
             else { moveTo(size.width * 0.75f, 0f); cubicTo(size.width * 0.75f, size.height * 0.5f, size.width * 0.25f, size.height * 0.5f, size.width * 0.25f, size.height) }
         }
-        drawPath(path = path, color = DeepOcean.copy(alpha = 0.1f), style = Stroke(width = 8f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)))
+        
+        if (category == "NUMBER") {
+            drawPath(path = path, color = Color.Gray.copy(alpha = 0.2f), style = Stroke(width = 12f))
+            drawPath(path = path, color = Color.White.copy(alpha = 0.5f), style = Stroke(width = 4f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 20f), 0f)))
+        } else {
+            drawPath(path = path, color = DeepOcean.copy(alpha = 0.1f), style = Stroke(width = 8f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)))
+        }
     }
 }
 
@@ -231,10 +233,18 @@ fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modif
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier.graphicsLayer(translationY = if (!isLocked) floatAnim else 0f).clickable(enabled = !isLocked) { onClick() }) {
         Box(contentAlignment = Alignment.Center) {
+            if (!isLocked && item.category == "NUMBER") {
+                QuantityIndicator(item.character)
+            }
+
             Surface(
                 modifier = Modifier.size(115.dp).shadow(if (isLocked) 0.dp else 12.dp, CircleShape),
                 shape = CircleShape,
-                color = when { isLocked -> Color(0xFFE0E0E0); item.isMastered -> Color(0xFFFFD600); else -> if (item.category == "NUMBER") MangoOrange else PastelGreen },
+                color = when { 
+                    isLocked -> Color(0xFFE0E0E0)
+                    item.isMastered -> Color(0xFFFFD600)
+                    else -> if (item.category == "NUMBER") MangoOrange else PastelGreen 
+                },
                 border = BorderStroke(4.dp, Color.White.copy(alpha = 0.6f))
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -254,11 +264,10 @@ fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modif
                     }
                 }
             }
-            // نشان کوچک حرف الفبا در گوشه جزیره
             if (!isLocked) {
                 Surface(
                     modifier = Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp).size(36.dp),
-                    shape = CircleShape, color = DeepOcean, border = BorderStroke(2.dp, Color.White)
+                    shape = CircleShape, color = if (item.category == "NUMBER") DeepOcean else DeepOcean, border = BorderStroke(2.dp, Color.White)
                 ) { Box(contentAlignment = Alignment.Center) { Text(item.character, color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp) } }
             }
             if (item.isMastered) Icon(Icons.Default.Star, null, tint = MangoOrange, modifier = Modifier.size(32.dp).align(Alignment.TopStart).offset(x = (-6).dp, y = (-6).dp).rotate(-15f))
@@ -268,39 +277,59 @@ fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modif
     }
 }
 
+@Composable
+fun QuantityIndicator(numberChar: String, dotSize: Dp = 12.dp, radiusSize: Dp = 72.dp) {
+    val count = remember(numberChar) {
+        when(numberChar) {
+            "۱" -> 1; "۲" -> 2; "۳" -> 3; "۴" -> 4; "۵" -> 5
+            "۶" -> 6; "۷" -> 7; "۸" -> 8; "۹" -> 9; else -> 0
+        }
+    }
+    
+    val infiniteTransition = rememberInfiniteTransition(label = "dots")
+    val angle by infiniteTransition.animateFloat(0f, 360f, infiniteRepeatable(tween(10000, easing = LinearEasing)), label = "rotate")
+    val pulse by infiniteTransition.animateFloat(0.8f, 1.2f, infiniteRepeatable(tween(1000, easing = EaseInOutSine), RepeatMode.Reverse), label = "pulse")
+
+    if (count > 0) {
+        Box(modifier = Modifier.size(radiusSize * 2 + dotSize), contentAlignment = Alignment.Center) {
+            repeat(count) { i ->
+                val dotAngle = (angle + (i * (360f / count))) * (Math.PI / 180f).toFloat()
+                Box(
+                    modifier = Modifier
+                        .offset(
+                            x = (radiusSize.value * cos(dotAngle)).dp,
+                            y = (radiusSize.value * sin(dotAngle)).dp
+                        )
+                        .size(dotSize * pulse)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(Color.White, MangoOrange, Color.Transparent)
+                            ),
+                            shape = CircleShape
+                        )
+                        .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                        .shadow(6.dp, CircleShape)
+                )
+            }
+        }
+    }
+}
+
 fun getEmojiForItem(item: LearningItem): String {
+    if (item.category == "NUMBER") {
+        return when(item.character) {
+            "۰" -> "🥚"; "۱" -> "🦒"; "۲" -> "🦢"; "۳" -> "🦋"; "۴" -> "🍀"
+            "۵" -> "🖐️"; "۶" -> "🐌"; "۷" -> "🌈"; "۸" -> "🐙"; "۹" -> "🎈"
+            else -> "🔢"
+        }
+    }
     return when(item.word) {
-        "آب" -> "💧"
-        "بابا" -> "🧔"
-        "باد" -> "🌬️"
-        "بام" -> "🏠"
-        "سبد" -> "🧺"
-        "نان" -> "🍞"
-        "ابر" -> "☁️"
-        "دست" -> "🖐️"
-        "بوم" -> "🖼️"
-        "سیب" -> "🍎"
-        "باز" -> "🦅"
-        "آش" -> "🥣"
-        "کتاب" -> "📚"
-        "سگ" -> "🐕"
-        "برف" -> "❄️"
-        "شاخ" -> "🦌"
-        "قایق" -> "⛵"
-        "لباس" -> "👕"
-        "تاج" -> "👑"
-        "چای" -> "🍵"
-        "کوه" -> "⛰️"
-        "ژله" -> "🍮"
-        "صورت" -> "👤"
-        "ذرت" -> "🌽"
-        "عینک" -> "👓"
-        "ثروت" -> "💰"
-        "حلزون" -> "🐌"
-        "ضامن" -> "🛡️"
-        "طوطی" -> "🦜"
-        "غذا" -> "🍲"
-        "ظرف" -> "🍽️"
-        else -> if (item.category == "NUMBER") "🔢" else "🌟"
+        "آب" -> "💧"; "بابا" -> "🧔"; "باد" -> "🌬️"; "بام" -> "🏠"; "سبد" -> "🧺"
+        "نان" -> "🍞"; "ابر" -> "☁️"; "دست" -> "🖐️"; "بوم" -> "🖼️"; "سیب" -> "🍎"
+        "باز" -> "🦅"; "آش" -> "🥣"; "کتاب" -> "📚"; "سگ" -> "🐕"; "برف" -> "❄️"
+        "شاخ" -> "🦌"; "قایق" -> "⛵"; "لباس" -> "👕"; "تاج" -> "👑"; "چای" -> "🍵"
+        "کوه" -> "⛰️"; "ژله" -> "🍮"; "صورت" -> "👤"; "ذرت" -> "🌽"; "عینک" -> "👓"
+        "ثروت" -> "💰"; "حلزون" -> "🐌"; "ضامن" -> "🛡️"; "طوطی" -> "🦜"; "غذا" -> "🍲"; "ظرف" -> "🍽️"
+        else -> "🌟"
     }
 }

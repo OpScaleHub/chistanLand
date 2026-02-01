@@ -41,6 +41,8 @@ import com.example.chistanland.ui.LearningViewModel
 import com.example.chistanland.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlin.math.cos
+import kotlin.math.sin
 
 @Composable
 fun LearningSessionScreen(
@@ -123,7 +125,7 @@ fun LearningSessionScreen(
         Box(modifier = Modifier.fillMaxSize().background(
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    if (item.category == "NUMBER") MangoOrange.copy(alpha = 0.2f) else SkyBlue.copy(alpha = 0.4f),
+                    if (item.category == "NUMBER") MangoOrange.copy(alpha = 0.1f) else SkyBlue.copy(alpha = 0.2f),
                     Color.White
                 )
             )
@@ -135,7 +137,7 @@ fun LearningSessionScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onBack, modifier = Modifier.size(48.dp).background(SkyBlue.copy(alpha = 0.2f), CircleShape)) {
+                    IconButton(onClick = onBack, modifier = Modifier.size(48.dp).background(SkyBlue.copy(alpha = 0.1f), CircleShape)) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "برگشت", tint = SkyBlue)
                     }
                     LearningAvatar(state = avatarState, modifier = Modifier.size(64.dp))
@@ -150,13 +152,23 @@ fun LearningSessionScreen(
                         .padding(horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
                         ChickStatus(streak = streak)
                         PlantProgress(level = item.level)
                     }
 
-                    Spacer(modifier = Modifier.height(32.dp))
-                    WordCard(item = item, onPlaySound = { viewModel.startLearning(item) }, modifier = Modifier.graphicsLayer { translationX = shakeOffset.value })
+                    // بخش جدید: نمایش منظم حباب‌ها بالای کارت
+                    if (item.category == "NUMBER") {
+                        SessionQuantityIndicator(item.character)
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+
+                    WordCard(
+                        item = item, 
+                        onPlaySound = { viewModel.startLearning(item) }, 
+                        modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
+                    )
+                    
                     Spacer(modifier = Modifier.height(40.dp))
                     WordDisplay(targetWord = targetFullString, typedText = typedText, charStatus = charStatus, modifier = Modifier.graphicsLayer { translationX = shakeOffset.value })
                     Spacer(modifier = Modifier.height(32.dp))
@@ -168,7 +180,7 @@ fun LearningSessionScreen(
                         .fillMaxWidth()
                         .background(
                             Brush.verticalGradient(
-                                listOf(Color.Transparent, Color.White.copy(alpha = 0.8f))
+                                listOf(Color.Transparent, Color.White.copy(alpha = 0.9f))
                             )
                         )
                         .padding(bottom = 32.dp, top = 8.dp),
@@ -189,6 +201,72 @@ fun LearningSessionScreen(
             }
         }
     }
+}
+
+@Composable
+fun SessionQuantityIndicator(numberChar: String) {
+    val count = remember(numberChar) {
+        when(numberChar) {
+            "۱" -> 1; "۲" -> 2; "۳" -> 3; "۴" -> 4; "۵" -> 5
+            "۶" -> 6; "۷" -> 7; "۸" -> 8; "۹" -> 9; "۰" -> 0; else -> 0
+        }
+    }
+    
+    // چیدمان منظم در دو ردیف برای شمارش آسان‌تر
+    val rows = if (count <= 5) 1 else 2
+    val itemsPerRow = if (count <= 5) count else (count + 1) / 2
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp)
+            .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+            .border(1.dp, MangoOrange.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        repeat(rows) { rowIndex ->
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val start = rowIndex * itemsPerRow
+                val end = minOf(start + itemsPerRow, count)
+                for (i in start until end) {
+                    MagicOrb(index = i)
+                }
+            }
+        }
+        if (count == 0) {
+            Text("خالی (صفر)", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun MagicOrb(index: Int) {
+    val infiniteTransition = rememberInfiniteTransition(label = "orb")
+    val floatAnim by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 8f,
+        animationSpec = infiniteRepeatable(
+            tween(1000 + (index * 100), easing = EaseInOutSine),
+            RepeatMode.Reverse
+        ),
+        label = "float"
+    )
+    
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .graphicsLayer { translationY = floatAnim }
+            .background(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.White, MangoOrange)
+                ),
+                shape = CircleShape
+            )
+            .border(2.dp, Color.White, CircleShape)
+            .shadow(4.dp, CircleShape)
+    )
 }
 
 @Composable
@@ -220,11 +298,9 @@ fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () ->
                 val emoji = getEmojiForWord(item.word, item.category)
                 val context = LocalContext.current
                 
-                // اولویت با اموجی‌های خاص ماست
                 if (emoji != "🌟" && emoji != "🔢") {
                     Text(text = emoji, fontSize = 110.sp)
                 } else {
-                    // اگر اموجی نداشتیم، سراغ تصویر می‌رویم
                     val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
                     if (imageResId != 0) {
                         Image(
@@ -233,7 +309,6 @@ fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () ->
                             modifier = Modifier.size(140.dp).clip(RoundedCornerShape(24.dp))
                         )
                     } else {
-                        // در نهایت اموجی پیش‌فرض
                         Text(text = emoji, fontSize = 110.sp)
                     }
                 }
@@ -251,37 +326,12 @@ fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () ->
 
 fun getEmojiForWord(word: String, category: String): String {
     return when(word) {
-        "آب" -> "💧"
-        "بابا" -> "🧔"
-        "باد" -> "🌬️"
-        "بام" -> "🏠"
-        "سبد" -> "🧺"
-        "نان" -> "🍞"
-        "ابر" -> "☁️"
-        "دست" -> "🖐️"
-        "بوم" -> "🖼️"
-        "سیب" -> "🍎"
-        "باز" -> "🦅"
-        "آش" -> "🥣"
-        "کتاب" -> "📚"
-        "سگ" -> "🐕"
-        "برف" -> "❄️"
-        "شاخ" -> "🦌"
-        "قایق" -> "⛵"
-        "لباس" -> "👕"
-        "تاج" -> "👑"
-        "چای" -> "🍵"
-        "کوه" -> "⛰️"
-        "ژله" -> "🍮"
-        "صورت" -> "👤"
-        "ذرت" -> "🌽"
-        "عینک" -> "👓"
-        "ثروت" -> "💰"
-        "حلزون" -> "🐌"
-        "ضامن" -> "🛡️"
-        "طوطی" -> "🦜"
-        "غذا" -> "🍲"
-        "ظرف" -> "🍽️"
+        "آب" -> "💧"; "بابا" -> "🧔"; "باد" -> "🌬️"; "بام" -> "🏠"; "سبد" -> "🧺"
+        "نان" -> "🍞"; "ابر" -> "☁️"; "دست" -> "🖐️"; "بوم" -> "🖼️"; "سیب" -> "🍎"
+        "باز" -> "🦅"; "آش" -> "🥣"; "کتاب" -> "📚"; "سگ" -> "🐕"; "برف" -> "❄️"
+        "شاخ" -> "🦌"; "قایق" -> "⛵"; "لباس" -> "👕"; "تاج" -> "👑"; "چای" -> "🍵"
+        "کوه" -> "⛰️"; "ژله" -> "🍮"; "صورت" -> "👤"; "ذرت" -> "🌽"; "عینک" -> "👓"
+        "ثروت" -> "💰"; "حلزون" -> "🐌"; "ضامن" -> "🛡️"; "طوطی" -> "🦜"; "غذا" -> "🍲"; "ظرف" -> "🍽️"
         else -> if (category == "NUMBER") "🔢" else "🌟"
     }
 }
