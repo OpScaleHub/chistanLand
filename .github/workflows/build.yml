@@ -12,19 +12,29 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: wrapper
+        # فعال‌سازی کش برای کارهای موازی و خروجی‌های کامپایل شده
+        cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-      
-    - name: Build with Gradle
+
+    - name: Run Unit Tests
+      run: ./gradlew testDebugUnitTest --continue
+
+    - name: Build Debug APK
       run: ./gradlew assembleDebug
 
     - name: Upload APK
@@ -33,12 +43,15 @@ jobs:
         name: app-debug
         path: app/build/outputs/apk/debug/app-debug.apk
 
-    - name: Prepare GitHub Pages
+    - name: Prepare Artifacts for Pages
       run: |
         mkdir -p public
         cp app/build/outputs/apk/debug/app-debug.apk public/chistanland-latest.apk
-        # Copy the luxury landing page index.html
-        cp scripts/landing-page.html public/index.html
+        if [ -f scripts/landing-page.html ]; then
+          cp scripts/landing-page.html public/index.html
+        else
+          echo "<html><body><h1>ChistanLand Latest Build</h1><a href='chistanland-latest.apk'>Download APK</a></body></html>" > public/index.html
+        fi
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v4
