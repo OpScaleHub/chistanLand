@@ -198,7 +198,7 @@ fun LearningSessionScreen(
 fun SuccessFestivalOverlay() {
     val context = LocalContext.current
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(
-        context.resources.getIdentifier("success_fest_anim", "raw", context.packageName).let { if(it==0) 1 else it }
+        context.resources.getIdentifier("success_fest_anim", "raw", context.packageName).let { if(it==0) 1 else it } 
     ))
     
     Box(
@@ -449,12 +449,12 @@ fun KidKeyboard(
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         rows.forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
                 row.forEach { char ->
                     val isHighlighted = showHint && char == targetChar
@@ -462,7 +462,7 @@ fun KidKeyboard(
                         char = char,
                         onClick = { onKeyClick(char) },
                         isHighlighted = isHighlighted,
-                        modifier = Modifier.weight(1f, fill = false)
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
@@ -482,7 +482,6 @@ fun KeyButton(char: String, onClick: () -> Unit, isHighlighted: Boolean, modifie
         ), label = "scale"
     )
 
-    // Smooth color transition for the highlight
     val animatedBgColor by animateColorAsState(
         targetValue = if (isHighlighted) Color(0xFFFFD600) else MangoOrange,
         animationSpec = tween(400)
@@ -491,7 +490,7 @@ fun KeyButton(char: String, onClick: () -> Unit, isHighlighted: Boolean, modifie
     Surface(
         modifier = modifier
             .aspectRatio(1.1f)
-            .widthIn(min = 60.dp, max = 72.dp)
+            .widthIn(max = 72.dp)
             .graphicsLayer(scaleX = scale, scaleY = scale)
             .clickable { onClick() }
             .shadow(if (isHighlighted) 12.dp else 4.dp, RoundedCornerShape(18.dp)),
@@ -501,7 +500,7 @@ fun KeyButton(char: String, onClick: () -> Unit, isHighlighted: Boolean, modifie
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Text(
                 text = char,
-                fontSize = 32.sp,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = if (isHighlighted) DeepOcean else Color.White
             )
