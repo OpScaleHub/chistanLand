@@ -49,7 +49,6 @@ fun LearningSessionScreen(
     val keyboardKeys by viewModel.keyboardKeys.collectAsState()
     val avatarState by viewModel.avatarState.collectAsState()
     val view = LocalView.current
-    val configuration = LocalConfiguration.current
     val scrollState = rememberScrollState()
     
     val shakeOffset = remember { Animatable(0f) }
@@ -108,9 +107,14 @@ fun LearningSessionScreen(
     }
 
     val item = currentItem!!
-    // Optimization: Use derivedStateOf for calculations depending on other states
-    val targetChar by remember(typedText) {
-        derivedStateOf { item.word.getOrNull(typedText.length)?.toString() ?: "" }
+    
+    // شناسایی دقیق هدف تایپ (کلمه برای حروف، خود نشانه برای اعداد)
+    val targetFullString = remember(item) {
+        if (item.category == "NUMBER") item.character else item.word
+    }
+
+    val targetChar by remember(typedText, targetFullString) {
+        derivedStateOf { targetFullString.getOrNull(typedText.length)?.toString() ?: "" }
     }
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -120,7 +124,10 @@ fun LearningSessionScreen(
                     .fillMaxSize()
                     .background(
                         brush = Brush.verticalGradient(
-                            colors = listOf(SkyBlue.copy(alpha = 0.4f), Color.White)
+                            colors = listOf(
+                                if (item.category == "NUMBER") MangoOrange.copy(alpha = 0.2f) else SkyBlue.copy(alpha = 0.4f),
+                                Color.White
+                            )
                         )
                     )
                     .verticalScroll(scrollState)
@@ -152,7 +159,6 @@ fun LearningSessionScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        // Optimization: Use graphicsLayer lambda to avoid recomposition during animation
                         .graphicsLayer { translationY = levelDownY.value },
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.Bottom
@@ -163,16 +169,18 @@ fun LearningSessionScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // نمایش کارت تصویر/نشانه
                 WordCard(
-                    word = item.word,
+                    item = item,
                     onPlaySound = { viewModel.startLearning(item) },
                     modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
                 )
 
                 Spacer(modifier = Modifier.height(40.dp))
 
+                // نمایش حروف یا رقم هدف
                 WordDisplay(
-                    targetWord = item.word,
+                    targetWord = targetFullString,
                     typedText = typedText,
                     charStatus = charStatus,
                     modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
@@ -182,7 +190,7 @@ fun LearningSessionScreen(
 
                 KidKeyboard(
                     keys = keyboardKeys,
-                    onKeyClick = viewModel::onCharTyped, // Optimization: Stable function reference
+                    onKeyClick = viewModel::onCharTyped, 
                     targetChar = targetChar,
                     showHint = showHint && !hintBlocked
                 )
@@ -233,7 +241,7 @@ fun SuccessFestivalOverlay() {
 }
 
 @Composable
-fun WordCard(word: String, onPlaySound: () -> Unit, modifier: Modifier = Modifier) {
+fun WordCard(item: com.example.chistanland.data.LearningItem, onPlaySound: () -> Unit, modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "wordCard")
     val floatAnim by infiniteTransition.animateFloat(
         initialValue = -8f,
@@ -255,8 +263,13 @@ fun WordCard(word: String, onPlaySound: () -> Unit, modifier: Modifier = Modifie
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = "🌟", fontSize = 64.sp)
-                Text(text = word, fontSize = 42.sp, fontWeight = FontWeight.Black, color = SkyBlue)
+                Text(text = if (item.category == "NUMBER") "🔢" else "🌟", fontSize = 64.sp)
+                Text(
+                    text = if (item.category == "NUMBER") item.word else item.word, 
+                    fontSize = 42.sp, 
+                    fontWeight = FontWeight.Black, 
+                    color = if (item.category == "NUMBER") MangoOrange else SkyBlue
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "پخش صدا", tint = MangoOrange, modifier = Modifier.size(32.dp))
             }

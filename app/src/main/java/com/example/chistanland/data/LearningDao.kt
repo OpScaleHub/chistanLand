@@ -15,7 +15,8 @@ interface LearningDao {
     @Query("SELECT * FROM learning_items WHERE id = :id")
     suspend fun getItemById(id: String): LearningItem?
 
-    @Query("SELECT * FROM learning_items WHERE category = :category AND (nextReviewTime <= :currentTime OR level = 1)")
+    // فقط مواردی که حداقل یک بار بازی شده‌اند (lastReviewTime > 0) و در دسته‌بندی درست هستند
+    @Query("SELECT * FROM learning_items WHERE category = :category AND lastReviewTime > 0 AND (nextReviewTime <= :currentTime OR level < 5)")
     fun getItemsToReviewByCategory(category: String, currentTime: Long): Flow<List<LearningItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
