@@ -61,7 +61,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         object StartReviewSession : UiEvent()
     }
 
-    private val persianDigits = listOf("۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹")
+    private val persianDigits = listOf("۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹", "۰")
 
     fun selectCategory(category: String?) {
         _selectedCategory.value = category
@@ -136,7 +136,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             val currentItems = filteredItems.value
             val currentIndex = currentItems.indexOfFirst { it.id == item.id }
             
-            // در روش تجمعی، کیبورد فقط حروفی را دارد که تا این مرحله تدریس شده‌اند
             val accessibleLetters = if (currentIndex >= 0) {
                 currentItems.take(currentIndex + 1).flatMap { it.word.map { c -> c.toString() } }.toSet()
             } else {
@@ -195,35 +194,43 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     fun seedData() {
         viewModelScope.launch {
-            // درخت یادگیری تجمعی (Cumulative) - هر مرحله فقط یک حرف جدید اضافه می‌شود
-            // استثنای اول: "آب" که آ و ب را همزمان معرفی می‌کند.
             val cumulativeAlphabet = listOf(
                 LearningItem("a1", "ب", "آب", "audio_a1", "img_a1", "ALPHABET"),
-                LearningItem("a2", "ا", "بابا", "audio_a2", "img_a2", "ALPHABET"), // ب (قبلی) + ا (جدید)
-                LearningItem("a3", "د", "باد", "audio_a3", "img_a3", "ALPHABET"), // ب، ا (قبلی) + د (جدید)
-                LearningItem("a4", "م", "بام", "audio_a4", "img_a4", "ALPHABET"), // ب، ا (قبلی) + م (جدید)
-                LearningItem("a5", "س", "سبد", "audio_a5", "img_a5", "ALPHABET"), // ب، د (قبلی) + س (جدید)
-                LearningItem("a6", "ن", "نان", "audio_a6", "img_a6", "ALPHABET"), // آ (قبلی) + ن (جدید)
-                LearningItem("a7", "ر", "ابر", "audio_a7", "img_a7", "ALPHABET"), // ا، ب (قبلی) + ر (جدید)
-                LearningItem("a8", "ت", "دست", "audio_a8", "img_a8", "ALPHABET"), // د، س (قبلی) + ت (جدید)
-                LearningItem("a9", "و", "بوم", "audio_a9", "img_a9", "ALPHABET"), // ب، م (قبلی) + و (جدید)
-                LearningItem("a10", "ی", "سیب", "audio_a10", "img_a10", "ALPHABET"), // س، ب (قبلی) + ی (جدید)
-                LearningItem("a11", "ز", "باز", "audio_a11", "img_a11", "ALPHABET"), // ب، ا (قبلی) + ز (جدید)
-                LearningItem("a12", "ش", "آش", "audio_a12", "img_a12", "ALPHABET"), // آ (قبلی) + ش (جدید)
-                LearningItem("a13", "ک", "کتاب", "audio_a13", "img_a13", "ALPHABET"), // ت، ا، ب (قبلی) + ک (جدید)
-                LearningItem("a14", "گ", "سگ", "audio_a14", "img_a14", "ALPHABET"), // س (قبلی) + گ (جدید)
-                LearningItem("a15", "ف", "برف", "audio_a15", "img_a15", "ALPHABET"), // ب، ر (قبلی) + ف (جدید)
-                LearningItem("a16", "خ", "شاخ", "audio_a16", "img_a16", "ALPHABET"), // ش، ا (قبلی) + خ (جدید)
-                LearningItem("a17", "ق", "قایق", "audio_a17", "img_a17", "ALPHABET"), // ا، ی (قبلی) + ق (جدید)
-                LearningItem("a18", "ل", "لباس", "audio_a18", "img_a18", "ALPHABET"), // ب، ا، س (قبلی) + ل (جدید)
-                LearningItem("a19", "ج", "تاج", "audio_a19", "img_a19", "ALPHABET"), // ت، ا (قبلی) + ج (جدید)
-                LearningItem("a20", "چ", "چای", "audio_a20", "img_a20", "ALPHABET"), // ا، ی (قبلی) + چ (جدید)
-                LearningItem("a21", "ژ", "ژله", "audio_a21", "img_a21", "ALPHABET"), // ل (قبلی) + ژ (جدید)
-                LearningItem("a22", "ه", "کوه", "audio_a22", "img_a22", "ALPHABET")  // ک، و (قبلی) + ه (جدید)
+                LearningItem("a2", "ا", "بابا", "audio_a2", "img_a2", "ALPHABET"),
+                LearningItem("a3", "د", "باد", "audio_a3", "img_a3", "ALPHABET"),
+                LearningItem("a4", "م", "بام", "audio_a4", "img_a4", "ALPHABET"),
+                LearningItem("a5", "س", "سبد", "audio_a5", "img_a5", "ALPHABET"),
+                LearningItem("a6", "ن", "نان", "audio_a6", "img_a6", "ALPHABET"),
+                LearningItem("a7", "ر", "ابر", "audio_a7", "img_a7", "ALPHABET"),
+                LearningItem("a8", "ت", "دست", "audio_a8", "img_a8", "ALPHABET"),
+                LearningItem("a9", "و", "بوم", "audio_a9", "img_a9", "ALPHABET"),
+                LearningItem("a10", "ی", "سیب", "audio_a10", "img_a10", "ALPHABET"),
+                LearningItem("a11", "ز", "باز", "audio_a11", "img_a11", "ALPHABET"),
+                LearningItem("a12", "ش", "آش", "audio_a12", "img_a12", "ALPHABET"),
+                LearningItem("a13", "ک", "کتاب", "audio_a13", "img_a13", "ALPHABET"),
+                LearningItem("a14", "گ", "سگ", "audio_a14", "img_a14", "ALPHABET"),
+                LearningItem("a15", "ف", "برف", "audio_a15", "img_a15", "ALPHABET"),
+                LearningItem("a16", "خ", "شاخ", "audio_a16", "img_a16", "ALPHABET"),
+                LearningItem("a17", "ق", "قایق", "audio_a17", "img_a17", "ALPHABET"),
+                LearningItem("a18", "ل", "لباس", "audio_a18", "img_a18", "ALPHABET"),
+                LearningItem("a19", "ج", "تاج", "audio_a19", "img_a19", "ALPHABET"),
+                LearningItem("a20", "چ", "چای", "audio_a20", "img_a20", "ALPHABET"),
+                LearningItem("a21", "ه", "کوه", "audio_a21", "img_a21", "ALPHABET"),
+                LearningItem("a22", "ژ", "ژله", "audio_a22", "img_a22", "ALPHABET"),
+                LearningItem("a23", "ص", "صورت", "audio_a23", "img_a23", "ALPHABET"),
+                LearningItem("a24", "ذ", "ذرت", "audio_a24", "img_a24", "ALPHABET"),
+                LearningItem("a25", "ع", "عینک", "audio_a25", "img_a25", "ALPHABET"),
+                LearningItem("a26", "ث", "ثروت", "audio_a26", "img_a26", "ALPHABET"),
+                LearningItem("a27", "ح", "حلزون", "audio_a27", "img_a27", "ALPHABET"),
+                LearningItem("a28", "ض", "ضامن", "audio_a28", "img_a28", "ALPHABET"),
+                LearningItem("a29", "ط", "طوطی", "audio_a29", "img_a29", "ALPHABET"),
+                LearningItem("a30", "غ", "غذا", "audio_a30", "img_a30", "ALPHABET"),
+                LearningItem("a31", "ظ", "ظرف", "audio_a31", "img_a31", "ALPHABET")
             )
             
-            val numberItems = (0..9).map { 
-                LearningItem("n$it", it.toString().toPersianDigit(), it.toPersianWord(), "audio_n$it", "img_n$it", "NUMBER")
+            val orderedNumbers = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
+            val numberItems = orderedNumbers.mapIndexed { index, num -> 
+                LearningItem("n$num", num.toString().toPersianDigit(), num.toPersianWord(), "audio_n$num", "img_n$num", "NUMBER")
             }
             
             repository.insertInitialData(cumulativeAlphabet + numberItems)
