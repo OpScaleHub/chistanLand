@@ -198,7 +198,7 @@ fun LearningSessionScreen(
 fun SuccessFestivalOverlay() {
     val context = LocalContext.current
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(
-        context.resources.getIdentifier("success_fest", "raw", context.packageName).let { if(it==0) 1 else it } 
+        context.resources.getIdentifier("success_fest_anim", "raw", context.packageName).let { if(it==0) 1 else it }
     ))
     
     Box(

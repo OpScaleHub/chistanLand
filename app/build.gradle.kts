@@ -73,3 +73,13 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
+
+tasks.register("deleteConflictingResource") {
+    doLast {
+        val f = file("src/main/res/raw/success_fest.json")
+        if (f.exists()) {
+            f.delete()
+            println("Deleted duplicate resource: ${f.absolutePath}")
+        }
+    }
+}
