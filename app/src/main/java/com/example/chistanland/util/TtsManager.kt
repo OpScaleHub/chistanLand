@@ -2,15 +2,20 @@ package com.github.opscalehub.chistanland.util
 
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.net.Uri
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.net.URLEncoder
 import java.util.*
 import kotlin.coroutines.resume
@@ -21,6 +26,7 @@ class TtsManager(private val context: Context) {
     private var isEnglishNativeReady = false
     private var mediaPlayer: MediaPlayer? = null
     private val TAG = "TtsManager"
+    private val PERSIAN_LOCALE = Locale("fa", "IR")
 
     init {
         initNativeTts()
@@ -29,18 +35,28 @@ class TtsManager(private val context: Context) {
     private fun initNativeTts() {
         nativeTts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                // Initial check for languages
-                val faResult = nativeTts?.setLanguage(Locale("fa", "IR"))
-                isPersianNativeReady = (faResult != null && faResult >= TextToSpeech.LANG_AVAILABLE)
+                // Check if Persian voice data is installed
+                val faResult = nativeTts?.isLanguageAvailable(PERSIAN_LOCALE)
+                isPersianNativeReady = faResult != null && faResult >= TextToSpeech.LANG_AVAILABLE
                 
-                val enResult = nativeTts?.setLanguage(Locale.US)
-                isEnglishNativeReady = (enResult != null && enResult >= TextToSpeech.LANG_AVAILABLE)
+                // Check if English voice data is installed
+                val enResult = nativeTts?.isLanguageAvailable(Locale.US)
+                isEnglishNativeReady = enResult != null && enResult >= TextToSpeech.LANG_AVAILABLE
                 
-                Log.i(TAG, "Native TTS initialized. Persian Ready: $isPersianNativeReady, English Ready: $isEnglishNativeReady")
+                Log.i(TAG, "Native TTS Status -> Persian: $isPersianNativeReady, English: $isEnglishNativeReady")
                 
                 setupProgressListener()
+
+                // Test English to verify routing
+                if (isEnglishNativeReady) {
+                    GlobalScope.launch {
+                        delay(2000)
+                        Log.d(TAG, "Testing English Native Audio...")
+                        speak("TTS system is active", Locale.US)
+                    }
+                }
             } else {
-                Log.e(TAG, "Native TTS initialization failed with status: $status")
+                Log.e(TAG, "Native TTS initialization failed")
             }
         }
     }
@@ -50,22 +66,16 @@ class TtsManager(private val context: Context) {
     private fun setupProgressListener() {
         nativeTts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
-                Log.d(TAG, "Native speech started: $utteranceId")
+                Log.d(TAG, "Native Speech Started: $utteranceId")
             }
 
             override fun onDone(utteranceId: String?) {
-                Log.d(TAG, "Native speech done: $utteranceId")
+                Log.d(TAG, "Native Speech Done: $utteranceId")
                 resumeContinuation()
             }
 
             override fun onError(utteranceId: String?) {
-                Log.e(TAG, "Native speech error: $utteranceId")
-                resumeContinuation()
-            }
-
-            @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?, errorCode: Int) {
-                Log.e(TAG, "Native speech error code $errorCode: $utteranceId")
+                Log.e(TAG, "Native Speech Error: $utteranceId")
                 resumeContinuation()
             }
         })
@@ -78,38 +88,34 @@ class TtsManager(private val context: Context) {
         }
     }
 
-    suspend fun speak(text: String, locale: Locale = Locale("fa", "IR")) {
+    suspend fun speak(text: String, locale: Locale = PERSIAN_LOCALE) {
         val isPersian = locale.language == "fa"
-        Log.d(TAG, "Request to speak: '$text' in ${locale.displayName}")
+        Log.d(TAG, "Speaking: '$text' (${locale.language})")
         
         if (isPersian) {
             if (isPersianNativeReady) {
                 speakNative(text, locale)
             } else {
-                Log.w(TAG, "Native Persian not ready. Falling back to Online Google TTS...")
+                Log.w(TAG, "Persian Native Missing. Downloading from Google...")
                 speakOnline(text, "fa")
             }
         } else if (locale.language == "en") {
             if (isEnglishNativeReady) {
                 speakNative(text, locale)
             } else {
-                Log.w(TAG, "Native English not ready. Falling back to Online Google TTS...")
                 speakOnline(text, "en")
             }
-        } else {
-            speakOnline(text, locale.language)
         }
     }
 
     private suspend fun speakNative(text: String, locale: Locale) = suspendCancellableCoroutine<Unit> { continuation ->
         currentContinuation = continuation
         nativeTts?.language = locale
-        
         val id = UUID.randomUUID().toString()
         val result = nativeTts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
         
         if (result != TextToSpeech.SUCCESS) {
-            Log.e(TAG, "Native speak failed to queue. Result: $result")
+            Log.e(TAG, "Native speak failed to queue")
             resumeContinuation()
         }
         
@@ -119,58 +125,59 @@ class TtsManager(private val context: Context) {
         }
     }
 
-    private suspend fun speakOnline(text: String, langCode: String) = withContext(Dispatchers.Main) {
-        suspendCancellableCoroutine<Unit> { continuation ->
-            try {
+    private suspend fun speakOnline(text: String, langCode: String) = withContext(Dispatchers.IO) {
+        val encodedText = URLEncoder.encode(text, "UTF-8").replace("+", "%20")
+        val urlString = "https://translate.google.com/translate_tts?ie=UTF-8&tl=$langCode&client=tw-ob&q=$encodedText"
+        
+        try {
+            val tempFile = File(context.cacheDir, "tts_cache.mp3")
+            val url = URL(urlString)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0")
+            
+            connection.inputStream.use { input ->
+                FileOutputStream(tempFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            withContext(Dispatchers.Main) {
+                playFile(tempFile)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Download failed: ${e.message}")
+        }
+    }
+
+    private suspend fun playFile(file: File) = suspendCancellableCoroutine<Unit> { continuation ->
+        try {
+            mediaPlayer?.release()
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(file.absolutePath)
+                setOnPreparedListener { it.start() }
+                setOnCompletionListener { 
+                    it.release()
+                    mediaPlayer = null
+                    if (continuation.isActive) continuation.resume(Unit)
+                }
+                setOnErrorListener { mp, what, extra ->
+                    Log.e(TAG, "MediaPlayer Error: $what, $extra")
+                    mp.release()
+                    mediaPlayer = null
+                    if (continuation.isActive) continuation.resume(Unit)
+                    true
+                }
+                prepareAsync()
+            }
+            
+            continuation.invokeOnCancellation {
                 mediaPlayer?.stop()
                 mediaPlayer?.release()
                 mediaPlayer = null
-
-                val encodedText = URLEncoder.encode(text, "UTF-8")
-                // Using client=gtx which is often more reliable than tw-ob
-                val url = "https://translate.google.com/translate_tts?ie=UTF-8&tl=$langCode&client=gtx&q=$encodedText"
-                Log.d(TAG, "Online TTS URL: $url")
-                
-                val headers = mapOf("User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-                
-                mediaPlayer = MediaPlayer().apply {
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                            .build()
-                    )
-                    setDataSource(context, Uri.parse(url), headers)
-                    
-                    setOnPreparedListener { 
-                        Log.d(TAG, "MediaPlayer prepared, starting online playback")
-                        it.start() 
-                    }
-                    setOnCompletionListener { 
-                        Log.d(TAG, "MediaPlayer online playback completed")
-                        it.release()
-                        mediaPlayer = null
-                        if (continuation.isActive) continuation.resume(Unit) 
-                    }
-                    setOnErrorListener { mp, what, extra -> 
-                        Log.e(TAG, "MediaPlayer Error: what=$what extra=$extra")
-                        mp.release()
-                        mediaPlayer = null
-                        if (continuation.isActive) continuation.resume(Unit)
-                        true
-                    }
-                    prepareAsync()
-                }
-                
-                continuation.invokeOnCancellation {
-                    mediaPlayer?.stop()
-                    mediaPlayer?.release()
-                    mediaPlayer = null
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Online TTS exception: ${e.message}")
-                if (continuation.isActive) continuation.resume(Unit)
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Playback failed: ${e.message}")
+            if (continuation.isActive) continuation.resume(Unit)
         }
     }
 
