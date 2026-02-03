@@ -7,6 +7,7 @@ import com.github.opscalehub.chistanland.data.AppDatabase
 import com.github.opscalehub.chistanland.data.LearningItem
 import com.github.opscalehub.chistanland.data.LearningRepository
 import com.github.opscalehub.chistanland.util.AudioManager
+import com.github.opscalehub.chistanland.util.TtsManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -17,6 +18,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         AppDatabase.getDatabase(application).learningDao()
     )
     private val audioManager = AudioManager(application)
+    private val ttsManager = TtsManager(application)
     private var narrativeJob: Job? = null
 
     val allItems: StateFlow<List<LearningItem>> = repository.allItems
@@ -87,10 +89,11 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
         narrativeJob = viewModelScope.launch {
             _avatarState.value = "SPEAKING"
-            // Wait for narrative to finish before playing phonetics
-            audioManager.playSound("inst_type_word")
-            delay(400) // Natural pause between sentences
-            audioManager.playSound(item.phonetic)
+            
+            val instruction = if (item.category == "NUMBER") "بنویس عدد " else "بنویس کلمه "
+            val textToSpeak = instruction + item.word
+            
+            ttsManager.speak(textToSpeak)
             _avatarState.value = "IDLE"
         }
     }
@@ -126,7 +129,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         narrativeJob?.cancel()
         narrativeJob = viewModelScope.launch {
             _avatarState.value = "SPEAKING"
-            audioManager.playSound("inst_find_char")
+            ttsManager.speak("نشانه مورد نظر رو پیدا کن")
             _avatarState.value = "IDLE"
         }
     }
@@ -186,7 +189,10 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 _streak.value += 1
                 // Play success music and show celebration simultaneously
                 launch { _uiEvent.emit(UiEvent.Success) }
+                // SFX for success is still good to have, or we can use TTS to say "آفرین"
                 audioManager.playSound("success_fest")
+                delay(500)
+                ttsManager.speak("آفرین! خیلی عالی بود")
             }
             delay(1000) // Celebration time
             _currentItem.value = null
@@ -197,42 +203,43 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     fun seedData() {
         viewModelScope.launch {
             val cumulativeAlphabet = listOf(
-                LearningItem("a1", "ب", "آب", "audio_a1", "img_a1", "ALPHABET"),
-                LearningItem("a2", "ا", "بابا", "audio_a2", "img_a2", "ALPHABET"),
-                LearningItem("a3", "د", "باد", "audio_a3", "img_a3", "ALPHABET"),
-                LearningItem("a4", "م", "بام", "audio_a4", "img_a4", "ALPHABET"),
-                LearningItem("a5", "س", "سبد", "audio_a5", "img_a5", "ALPHABET"),
-                LearningItem("a6", "ن", "نان", "audio_a6", "img_a6", "ALPHABET"),
-                LearningItem("a7", "ر", "ابر", "audio_a7", "img_a7", "ALPHABET"),
-                LearningItem("a8", "ت", "دست", "audio_a8", "img_a8", "ALPHABET"),
-                LearningItem("a9", "و", "بوم", "audio_a9", "img_a9", "ALPHABET"),
-                LearningItem("a10", "ی", "سیب", "audio_a10", "img_a10", "ALPHABET"),
-                LearningItem("a11", "ز", "باز", "audio_a11", "img_a11", "ALPHABET"),
-                LearningItem("a12", "ش", "آش", "audio_a12", "img_a12", "ALPHABET"),
-                LearningItem("a13", "ک", "کتاب", "audio_a13", "img_a13", "ALPHABET"),
-                LearningItem("a14", "گ", "سگ", "audio_a14", "img_a14", "ALPHABET"),
-                LearningItem("a15", "ف", "برف", "audio_a15", "img_a15", "ALPHABET"),
-                LearningItem("a16", "خ", "شاخ", "audio_a16", "img_a16", "ALPHABET"),
-                LearningItem("a17", "ق", "قایق", "audio_a17", "img_a17", "ALPHABET"),
-                LearningItem("a18", "ل", "لباس", "audio_a18", "img_a18", "ALPHABET"),
-                LearningItem("a19", "ج", "تاج", "audio_a19", "img_a19", "ALPHABET"),
-                LearningItem("a20", "چ", "چای", "audio_a20", "img_a20", "ALPHABET"),
-                LearningItem("a21", "ه", "کوه", "audio_a21", "img_a21", "ALPHABET"),
-                LearningItem("a22", "ژ", "ژله", "audio_a22", "img_a22", "ALPHABET"),
-                LearningItem("a23", "ص", "صورت", "audio_a23", "img_a23", "ALPHABET"),
-                LearningItem("a24", "ذ", "ذرت", "audio_a24", "img_a24", "ALPHABET"),
-                LearningItem("a25", "ع", "عینک", "audio_a25", "img_a25", "ALPHABET"),
-                LearningItem("a26", "ث", "ثروت", "audio_a26", "img_a26", "ALPHABET"),
-                LearningItem("a27", "ح", "حلزون", "audio_a27", "img_a27", "ALPHABET"),
-                LearningItem("a28", "ض", "ضامن", "audio_a28", "img_a28", "ALPHABET"),
-                LearningItem("a29", "ط", "طوطی", "audio_a29", "img_a29", "ALPHABET"),
-                LearningItem("a30", "غ", "غذا", "audio_a30", "img_a30", "ALPHABET"),
-                LearningItem("a31", "ظ", "ظرف", "audio_a31", "img_a31", "ALPHABET")
+                LearningItem("a1", "ب", "آب", "آب", "img_a1", "ALPHABET"),
+                LearningItem("a2", "ا", "بابا", "بابا", "img_a2", "ALPHABET"),
+                LearningItem("a3", "د", "باد", "باد", "img_a3", "ALPHABET"),
+                LearningItem("a4", "م", "بام", "بام", "img_a4", "ALPHABET"),
+                LearningItem("a5", "س", "سبد", "سبد", "img_a5", "ALPHABET"),
+                LearningItem("a6", "ن", "نان", "نان", "img_a6", "ALPHABET"),
+                LearningItem("a7", "ر", "ابر", "ابر", "img_a7", "ALPHABET"),
+                LearningItem("a8", "ت", "دست", "دست", "img_a8", "ALPHABET"),
+                LearningItem("a9", "و", "بوم", "بوم", "img_a9", "ALPHABET"),
+                LearningItem("a10", "ی", "سیب", "سیب", "img_a10", "ALPHABET"),
+                LearningItem("a11", "ز", "باز", "باز", "img_a11", "ALPHABET"),
+                LearningItem("a12", "ش", "آش", "آش", "img_a12", "ALPHABET"),
+                LearningItem("a13", "ک", "کتاب", "کتاب", "img_a13", "ALPHABET"),
+                LearningItem("a14", "گ", "سگ", "سگ", "img_a14", "ALPHABET"),
+                LearningItem("a15", "ف", "برف", "برف", "img_a15", "ALPHABET"),
+                LearningItem("a16", "خ", "شاخ", "شاخ", "img_a16", "ALPHABET"),
+                LearningItem("a17", "ق", "قایق", "قایق", "img_a17", "ALPHABET"),
+                LearningItem("a18", "ل", "لباس", "لباس", "img_a18", "ALPHABET"),
+                LearningItem("a19", "ج", "تاج", "تاج", "img_a19", "ALPHABET"),
+                LearningItem("a20", "چ", "چای", "چای", "img_a20", "ALPHABET"),
+                LearningItem("a21", "ه", "کوه", "کوه", "img_a21", "ALPHABET"),
+                LearningItem("a22", "ژ", "ژله", "ژله", "img_a22", "ALPHABET"),
+                LearningItem("a23", "ص", "صورت", "صورت", "img_a23", "ALPHABET"),
+                LearningItem("a24", "ذ", "ذرت", "ذرت", "img_a24", "ALPHABET"),
+                LearningItem("a25", "ع", "عینک", "عینک", "img_a25", "ALPHABET"),
+                LearningItem("a26", "ث", "ثروت", "ثروت", "img_a26", "ALPHABET"),
+                LearningItem("a27", "ح", "حلزون", "حلزون", "img_a27", "ALPHABET"),
+                LearningItem("a28", "ض", "ضامن", "ضامن", "img_a28", "ALPHABET"),
+                LearningItem("a29", "ط", "طوطی", "طوطی", "img_a29", "ALPHABET"),
+                LearningItem("a30", "غ", "غذا", "غذا", "img_a30", "ALPHABET"),
+                LearningItem("a31", "ظ", "ظرف", "ظرف", "img_a31", "ALPHABET")
             )
 
             val orderedNumbers = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
             val numberItems = orderedNumbers.mapIndexed { index, num ->
-                LearningItem("n$num", num.toString().toPersianDigit(), num.toPersianWord(), "audio_n$num", "img_n$num", "NUMBER")
+                val word = num.toPersianWord()
+                LearningItem("n$num", num.toString().toPersianDigit(), word, word, "img_n$num", "NUMBER")
             }
 
             repository.insertInitialData(cumulativeAlphabet + numberItems)
@@ -245,5 +252,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     override fun onCleared() {
         super.onCleared()
         audioManager.release()
+        ttsManager.release()
     }
 }
