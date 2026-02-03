@@ -20,13 +20,6 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-
-        ndk {
-            // Include only the necessary ABIs to reduce APK size
-            abiFilters.add("arm64-v8a")
-            abiFilters.add("armeabi-v7a")
-            abiFilters.add("x86_64")
-        }
     }
 
     buildTypes {
@@ -74,7 +67,6 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.lottie.compose)
     implementation(libs.coil.compose)
-    // implementation(libs.sherpa.onnx) // Temporarily disabled due to resolution issues
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
@@ -83,14 +75,4 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-}
-
-tasks.register("deleteConflictingResource") {
-    doLast {
-        val f = file("src/main/res/raw/success_fest.json")
-        if (f.exists()) {
-            f.delete()
-            println("Deleted duplicate resource: ${f.absolutePath}")
-        }
-    }
 }

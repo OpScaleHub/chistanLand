@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.github.opscalehub.chistanland.data.LearningItem
 import com.github.opscalehub.chistanland.ui.LearningViewModel
 import com.github.opscalehub.chistanland.ui.theme.*
+import com.github.opscalehub.chistanland.util.TtsManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +39,8 @@ fun ParentDashboardScreen(
     val items by viewModel.allItems.collectAsState()
     val narrative = viewModel.getParentNarrative()
     var showRawData by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val ttsManager = remember { TtsManager(context) }
 
     Scaffold(
         topBar = {
@@ -80,6 +85,11 @@ fun ParentDashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 contentPadding = PaddingValues(top = 16.dp, bottom = 40.dp)
             ) {
+                // TTS Settings Card
+                item {
+                    TtsSettingsCard(onClick = { ttsManager.openTtsSettings() })
+                }
+
                 // Summary Stats
                 item {
                     ProgressSummaryRow(items)
@@ -124,6 +134,48 @@ fun ParentDashboardScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun TtsSettingsCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = DeepOcean),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.CloudDownload,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "فعال‌سازی صدای آفلاین",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = "برای بهترین تجربه، صدای فارسی گوگل را نصب کنید.",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 13.sp
+                )
+            }
+            Button(
+                onClick = onClick,
+                colors = ButtonDefaults.buttonColors(containerColor = MangoOrange)
+            ) {
+                Text("تنظیمات", fontWeight = FontWeight.Bold)
             }
         }
     }
