@@ -1,155 +1,182 @@
 package com.github.opscalehub.chistanland.util
 
 import android.content.Context
-import android.content.Intent
 import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.media.MediaPlayer
 import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+// import com.k2fsa.sherpa.onnx.OfflineTts
+// import com.k2fsa.sherpa.onnx.OfflineTtsConfig
+// import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.net.URLEncoder
 import java.util.*
 import kotlin.coroutines.resume
 
-/**
- * TtsManager handles Text-to-Speech functionality for Persian language.
- * 
- * Note: Persian (Farsi) offline support depends on the Google TTS Engine 
- * having the voice data downloaded on the device.
- */
 class TtsManager(private val context: Context) {
-    private var tts: TextToSpeech? = null
-    private var isPersianReady = false
+    private var nativeTts: TextToSpeech? = null
+    // private var offlineTts: OfflineTts? = null
+    private var isPersianNativeReady = false
     private var mediaPlayer: MediaPlayer? = null
 
     init {
-        initializeTts()
+        // initSherpaOnnx() // Disabled until dependency is resolved
+        initNativeTts()
     }
 
-    private fun initializeTts() {
-        tts = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                checkPersianSupport()
-            } else {
-                Log.e("TtsManager", "TTS Initialization failed!")
+    private fun initSherpaOnnx() {
+        /*
+        try {
+            val assetManager = context.assets
+            val modelDir = "vits-persian"
+            
+            val files = assetManager.list(modelDir)
+            if (files.isNullOrEmpty()) {
+                Log.w("TtsManager", "Sherpa-ONNX models not found in assets/$modelDir")
+                return
             }
+
+            val config = OfflineTtsConfig(
+                vits = OfflineTtsVitsModelConfig(
+                    model = "$modelDir/model.onnx",
+                    lexicon = "$modelDir/lexicon.txt",
+                    tokens = "$modelDir/tokens.txt",
+                    dataDir = modelDir
+                ),
+                numThreads = 1,
+                debug = true
+            )
+            offlineTts = OfflineTts(assetManager, config)
+            Log.i("TtsManager", "Sherpa-ONNX Offline TTS initialized successfully")
+        } catch (e: Exception) {
+            Log.e("TtsManager", "Failed to init Sherpa-ONNX", e)
         }
+        */
     }
 
-    private fun checkPersianSupport() {
-        val faLocale = Locale("fa", "IR")
-        val result = tts?.setLanguage(faLocale)
-        
-        // result >= 0 means LANG_AVAILABLE, LANG_COUNTRY_AVAILABLE, or LANG_COUNTRY_VAR_AVAILABLE
-        isPersianReady = (result != null && result >= TextToSpeech.LANG_AVAILABLE)
-        
-        Log.d("TtsManager", "Persian Support Status: $result (Ready: $isPersianReady)")
-        
-        tts?.setSpeechRate(0.9f)
-        tts?.setPitch(1.0f)
+    private fun initNativeTts() {
+        nativeTts = TextToSpeech(context, { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val result = nativeTts?.setLanguage(Locale("fa"))
+                isPersianNativeReady = (result != null && result >= TextToSpeech.LANG_AVAILABLE)
+            }
+        }, "com.google.android.tts")
     }
 
     suspend fun speak(text: String) {
-        if (isPersianReady) {
-            speakNative(text)
-        } else {
-            Log.w("TtsManager", "Native Persian not ready. Using Online Fallback...")
-            speakOnline(text)
+        /*
+        // Priority 1: Offline Sherpa-ONNX (Local/Embedded)
+        if (offlineTts != null) {
+            speakOffline(text)
+            return
         }
+        */
+
+        // Priority 2: Native Android TTS (Offline if downloaded)
+        if (isPersianNativeReady) {
+            speakNative(text)
+            return
+        }
+
+        // Priority 3: Online Fallback (Last resort)
+        Log.w("TtsManager", "Using Online Fallback...")
+        speakOnline(text)
+    }
+
+    private suspend fun speakOffline(text: String) = withContext(Dispatchers.Default) {
+        /*
+        try {
+            val audio = offlineTts?.generate(text, sid = 0, speed = 1.0f) ?: return@withContext
+            
+            val sampleRate = audio.sampleRate
+            val samples = audio.samples
+            
+            val bufferSize = AudioTrack.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+            )
+
+            val audioTrack = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(sampleRate)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(samples.size * 2)
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build()
+
+            audioTrack.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+            
+            suspendCancellableCoroutine<Unit> { continuation ->
+                audioTrack.setPlaybackPositionUpdateListener(object : AudioTrack.OnPlaybackPositionUpdateListener {
+                    override fun onMarkerReached(track: AudioTrack?) {
+                        track?.release()
+                        if (continuation.isActive) continuation.resume(Unit)
+                    }
+                    override fun onPeriodicNotification(track: AudioTrack?) {}
+                })
+                audioTrack.notificationMarkerPosition = samples.size
+                audioTrack.play()
+                
+                continuation.invokeOnCancellation {
+                    audioTrack.stop()
+                    audioTrack.release()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("TtsManager", "Offline speak failed", e)
+        }
+        */
     }
 
     private suspend fun speakNative(text: String) = suspendCancellableCoroutine<Unit> { continuation ->
-        val utteranceId = UUID.randomUUID().toString()
-        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(id: String?) {
-                Log.d("TtsManager", "Started speaking native: $text")
-            }
-            override fun onDone(id: String?) { 
-                if (id == utteranceId && continuation.isActive) continuation.resume(Unit) 
-            }
-            override fun onError(id: String?) { 
-                Log.e("TtsManager", "Native TTS Error for: $text")
-                if (id == utteranceId && continuation.isActive) continuation.resume(Unit) 
-            }
-        })
-
-        val params = android.os.Bundle()
-        params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId)
-        val result = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
-        
-        if (result == TextToSpeech.ERROR) {
-            Log.e("TtsManager", "Failed to invoke speak() method")
-            if (continuation.isActive) continuation.resume(Unit)
-        }
-
-        continuation.invokeOnCancellation { tts?.stop() }
+        val id = UUID.randomUUID().toString()
+        nativeTts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
+        if (continuation.isActive) continuation.resume(Unit)
     }
 
     private suspend fun speakOnline(text: String) = withContext(Dispatchers.Main) {
-        return@withContext suspendCancellableCoroutine<Unit> { continuation ->
+        suspendCancellableCoroutine<Unit> { continuation ->
             try {
                 mediaPlayer?.release()
-                val encodedText = URLEncoder.encode(text, "UTF-8")
-                // Using Google Translate TTS endpoint as fallback
-                val url = "https://translate.google.com/translate_tts?ie=UTF-8&q=$encodedText&tl=fa&client=tw-ob"
-                
+                val url = "https://translate.google.com/translate_tts?ie=UTF-8&q=${URLEncoder.encode(text, "UTF-8")}&tl=fa&client=tw-ob"
                 mediaPlayer = MediaPlayer().apply {
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                            .build()
-                    )
-                    // Correct way to set data source for URLs
                     setDataSource(url)
-                    
-                    setOnPreparedListener { 
-                        it.start() 
-                    }
-                    setOnCompletionListener {
+                    setOnPreparedListener { it.start() }
+                    setOnCompletionListener { 
                         it.release()
-                        mediaPlayer = null
-                        if (continuation.isActive) continuation.resume(Unit)
+                        if (continuation.isActive) continuation.resume(Unit) 
                     }
-                    setOnErrorListener { _, what, extra ->
-                        Log.e("TtsManager", "Online TTS Error: what=$what, extra=$extra")
+                    setOnErrorListener { _, _, _ -> 
                         if (continuation.isActive) continuation.resume(Unit)
-                        true
+                        true 
                     }
                     prepareAsync()
                 }
-
-                continuation.invokeOnCancellation {
-                    mediaPlayer?.stop()
-                    mediaPlayer?.release()
-                    mediaPlayer = null
-                }
             } catch (e: Exception) {
-                Log.e("TtsManager", "Online fallback failed", e)
                 if (continuation.isActive) continuation.resume(Unit)
             }
         }
     }
 
-    /**
-     * Opens Android TTS settings so the user can download Persian voice data.
-     */
-    fun openTtsSettings() {
-        try {
-            val intent = Intent()
-            intent.action = "com.android.settings.TTS_SETTINGS"
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            Log.e("TtsManager", "Could not open TTS settings", e)
-        }
-    }
-
     fun release() {
-        tts?.shutdown()
+        nativeTts?.shutdown()
+        // offlineTts?.release()
         mediaPlayer?.release()
     }
 }
