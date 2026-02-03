@@ -35,23 +35,19 @@ class TtsManager(private val context: Context) {
     private fun initNativeTts() {
         nativeTts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                // Check if Persian voice data is installed
                 val faResult = nativeTts?.isLanguageAvailable(PERSIAN_LOCALE)
                 isPersianNativeReady = faResult != null && faResult >= TextToSpeech.LANG_AVAILABLE
                 
-                // Check if English voice data is installed
                 val enResult = nativeTts?.isLanguageAvailable(Locale.US)
                 isEnglishNativeReady = enResult != null && enResult >= TextToSpeech.LANG_AVAILABLE
                 
-                Log.i(TAG, "Native TTS Status -> Persian: $isPersianNativeReady, English: $isEnglishNativeReady")
+                Log.i(TAG, "Native TTS Ready -> Persian: $isPersianNativeReady, English: $isEnglishNativeReady")
                 
                 setupProgressListener()
 
-                // Test English to verify routing
                 if (isEnglishNativeReady) {
                     GlobalScope.launch {
                         delay(2000)
-                        Log.d(TAG, "Testing English Native Audio...")
                         speak("TTS system is active", Locale.US)
                     }
                 }
@@ -68,12 +64,10 @@ class TtsManager(private val context: Context) {
             override fun onStart(utteranceId: String?) {
                 Log.d(TAG, "Native Speech Started: $utteranceId")
             }
-
             override fun onDone(utteranceId: String?) {
                 Log.d(TAG, "Native Speech Done: $utteranceId")
                 resumeContinuation()
             }
-
             override fun onError(utteranceId: String?) {
                 Log.e(TAG, "Native Speech Error: $utteranceId")
                 resumeContinuation()
@@ -96,7 +90,7 @@ class TtsManager(private val context: Context) {
             if (isPersianNativeReady) {
                 speakNative(text, locale)
             } else {
-                Log.w(TAG, "Persian Native Missing. Downloading from Google...")
+                Log.w(TAG, "Persian Native Missing. Using Online Fallback...")
                 speakOnline(text, "fa")
             }
         } else if (locale.language == "en") {
@@ -126,26 +120,31 @@ class TtsManager(private val context: Context) {
     }
 
     private suspend fun speakOnline(text: String, langCode: String) = withContext(Dispatchers.IO) {
-        val encodedText = URLEncoder.encode(text, "UTF-8").replace("+", "%20")
-        val urlString = "https://translate.google.com/translate_tts?ie=UTF-8&tl=$langCode&client=tw-ob&q=$encodedText"
-        
         try {
+            val encodedText = URLEncoder.encode(text, "UTF-8").replace("+", "%20")
+            val urlString = "https://translate.google.com/translate_tts?ie=UTF-8&tl=$langCode&client=tw-ob&q=$encodedText"
+            
             val tempFile = File(context.cacheDir, "tts_cache.mp3")
             val url = URL(urlString)
             val connection = url.openConnection() as HttpURLConnection
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0")
+            // Using a more browser-like User-Agent to avoid 403/400 errors
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             
-            connection.inputStream.use { input ->
-                FileOutputStream(tempFile).use { output ->
-                    input.copyTo(output)
+            connection.connect()
+            if (connection.responseCode == 200) {
+                connection.inputStream.use { input ->
+                    FileOutputStream(tempFile).use { output ->
+                        input.copyTo(output)
+                    }
                 }
-            }
-            
-            withContext(Dispatchers.Main) {
-                playFile(tempFile)
+                withContext(Dispatchers.Main) {
+                    playFile(tempFile)
+                }
+            } else {
+                Log.e(TAG, "Google TTS Server Error: ${connection.responseCode}")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Download failed: ${e.message}")
+            Log.e(TAG, "Online Fallback failed: ${e.message}")
         }
     }
 
@@ -161,7 +160,6 @@ class TtsManager(private val context: Context) {
                     if (continuation.isActive) continuation.resume(Unit)
                 }
                 setOnErrorListener { mp, what, extra ->
-                    Log.e(TAG, "MediaPlayer Error: $what, $extra")
                     mp.release()
                     mediaPlayer = null
                     if (continuation.isActive) continuation.resume(Unit)
@@ -169,14 +167,7 @@ class TtsManager(private val context: Context) {
                 }
                 prepareAsync()
             }
-            
-            continuation.invokeOnCancellation {
-                mediaPlayer?.stop()
-                mediaPlayer?.release()
-                mediaPlayer = null
-            }
         } catch (e: Exception) {
-            Log.e(TAG, "Playback failed: ${e.message}")
             if (continuation.isActive) continuation.resume(Unit)
         }
     }
