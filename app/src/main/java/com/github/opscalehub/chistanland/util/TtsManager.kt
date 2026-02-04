@@ -7,6 +7,9 @@ import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.*
@@ -14,11 +17,12 @@ import kotlin.coroutines.resume
 
 /**
  * Manages Text-to-Speech functionality.
- * Online fallback removed to prevent emulator instability and "400" errors.
  */
 class TtsManager(private val context: Context) {
     private var nativeTts: TextToSpeech? = null
-    private var isPersianNativeReady = false
+    private val _isPersianAvailable = MutableStateFlow(false)
+    val isPersianAvailable: StateFlow<Boolean> = _isPersianAvailable.asStateFlow()
+    
     private var isEnglishNativeReady = false
     private val TAG = "TtsManager"
     private val PERSIAN_LOCALE = Locale("fa", "IR")
@@ -31,12 +35,12 @@ class TtsManager(private val context: Context) {
         nativeTts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 val faResult = nativeTts?.isLanguageAvailable(PERSIAN_LOCALE)
-                isPersianNativeReady = faResult != null && faResult >= TextToSpeech.LANG_AVAILABLE
+                _isPersianAvailable.value = faResult != null && faResult >= TextToSpeech.LANG_AVAILABLE
                 
                 val enResult = nativeTts?.isLanguageAvailable(Locale.US)
                 isEnglishNativeReady = enResult != null && enResult >= TextToSpeech.LANG_AVAILABLE
                 
-                Log.i(TAG, "Native TTS Ready -> Persian: $isPersianNativeReady, English: $isEnglishNativeReady")
+                Log.i(TAG, "Native TTS Ready -> Persian: ${_isPersianAvailable.value}, English: $isEnglishNativeReady")
                 
                 setupProgressListener()
 
@@ -44,7 +48,11 @@ class TtsManager(private val context: Context) {
                     @Suppress("OPT_IN_USAGE")
                     GlobalScope.launch {
                         delay(2000)
-                        speak("TTS system is active", Locale.US)
+                        if (!_isPersianAvailable.value) {
+                            speak("TTS system is active but Persian voice is missing", Locale.US)
+                        } else {
+                            speak("TTS system is active", Locale.US)
+                        }
                     }
                 }
             } else {
@@ -83,7 +91,7 @@ class TtsManager(private val context: Context) {
         Log.d(TAG, "Speaking: '$text' (${locale.language})")
         
         if (isPersian) {
-            if (isPersianNativeReady) {
+            if (_isPersianAvailable.value) {
                 speakNative(text, locale)
             } else {
                 Log.w(TAG, "Persian Local TTS Missing. No voice output.")
@@ -121,6 +129,12 @@ class TtsManager(private val context: Context) {
             context.startActivity(intent)
         } catch (e: Exception) {
             Log.e(TAG, "Could not open TTS settings", e)
+            // Fallback to general settings
+            try {
+                val intent = Intent(android.provider.Settings.ACTION_SETTINGS)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(intent)
+            } catch (e2: Exception) {}
         }
     }
 
