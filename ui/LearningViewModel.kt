@@ -42,7 +42,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val _charStatus = MutableStateFlow<List<Boolean>>(emptyList())
     val charStatus: StateFlow<List<Boolean>> = _charStatus.asStateFlow()
 
-    private val _activityType = MutableStateFlow(ActivityType.SPELLING)
+    private val _activityType = MutableStateFlow(ActivityType.PHONICS_INTRO)
     val activityType: StateFlow<ActivityType> = _activityType.asStateFlow()
 
     private val _missingCharIndex = MutableStateFlow(-1)
@@ -67,13 +67,13 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     private val sessionQueue = mutableListOf<LearningItem>()
 
-    // انواع فعالیت‌های آموزشی بر اساس سطح پیشرفت
+    // انواع فعالیت‌های آموزشی بر اساس سطح پیشرفت در عرض (Horizontal Depth)
     enum class ActivityType { 
-        PHONICS_INTRO,      // آشنایی با نشانه و صدای آن (اقلیم ۱)
-        MISSING_LETTER,     // پیدا کردن حرف گمشده در کلمه (اقلیم ۲)
-        SPELLING,           // نوشتن کامل کلمه (اقلیم ۳)
-        WORD_RECOGNITION,   // تشخیص کلمه از بین تصاویر (اقلیم ۴)
-        QUICK_RECALL        // مرور سریع (اقلیم ۵)
+        PHONICS_INTRO,      // آشنایی با صدای نشانه (فقط کلیک روی خود نشانه)
+        MISSING_LETTER,     // تعمیق یادگیری با پیدا کردن حرف گمشده در کلمه
+        SPELLING,           // تثبیت یادگیری با نوشتن کامل کلمه
+        WORD_RECOGNITION,   // تشخیص کلمه (مرور تصویری)
+        QUICK_RECALL        // تسلط نهایی (مرور سریع)
     }
 
     sealed class UiEvent {
@@ -94,8 +94,9 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         sessionQueue.clear()
         sessionQueue.add(mainItem)
         
+        // اضافه کردن آیتم‌های قبلی برای مرور در عرض
         val extraItems = filteredItems.value
-            .filter { it.id != mainItem.id && !it.isMastered }
+            .filter { it.id != mainItem.id && it.level > 1 }
             .shuffled()
             .take(2)
         sessionQueue.addAll(extraItems)
@@ -127,11 +128,11 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         narrativeJob = viewModelScope.launch {
             _avatarState.value = "SPEAKING"
             val instruction = when (_activityType.value) {
-                ActivityType.PHONICS_INTRO -> "نشانه ${item.character} مثل ${item.word}. روی ${item.character} بزن!"
-                ActivityType.MISSING_LETTER -> "کدوم نشانه توی این کلمه گم شده؟"
-                ActivityType.SPELLING -> "بنویس: ${item.word}"
-                ActivityType.WORD_RECOGNITION -> "تصویر ${item.word} رو پیدا کن!"
-                ActivityType.QUICK_RECALL -> "سریع بنویس: ${item.word}"
+                ActivityType.PHONICS_INTRO -> "نشانه «${item.character}» مثل «${item.word}». روی «${item.character}» بزن!"
+                ActivityType.MISSING_LETTER -> "توی کلمه «${item.word}» کدوم نشانه گم شده؟"
+                ActivityType.SPELLING -> "بیا بنویسیم: «${item.word}»"
+                ActivityType.WORD_RECOGNITION -> "تصویر «${item.word}» کجاست؟"
+                ActivityType.QUICK_RECALL -> "زود بنویس: «${item.word}»"
             }
             ttsManager.speak(instruction)
             _avatarState.value = "IDLE"
@@ -145,6 +146,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _charStatus.value = emptyList()
         hasErrorInCurrentWord = false
         
+        // تعیین نوع فعالیت بر اساس سطح آیتم (پیمایش طولی و عرضی)
         _activityType.value = decideActivityType(item, isReview)
 
         if (_activityType.value == ActivityType.MISSING_LETTER) {
@@ -170,25 +172,27 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     fun onCharTyped(char: String) {
         val current = _currentItem.value ?: return
-        // برای سطح ۱، هدف فقط حرف اصلی است. برای سطوح بالاتر، کل کلمه.
-        val targetFullString = if (current.category == "NUMBER" || current.level == 1) current.character else current.word
+        
+        // منطق هدف: در سطح ۱ هدف فقط نشانه است، در سطوح بالاتر کل کلمه
+        val targetFullString = if (current.category == "NUMBER" || _activityType.value == ActivityType.PHONICS_INTRO) {
+            current.character 
+        } else {
+            current.word
+        }
         
         when (_activityType.value) {
             ActivityType.PHONICS_INTRO -> {
-                // باید دقیقا همان نشانه را بزند
                 if (char == targetFullString) {
-                    _typedText.value = targetFullString
-                    _charStatus.value = List(targetFullString.length) { true }
-                    completeLevel(true)
+                    processCorrectChar(char, targetFullString)
                 } else {
                     handleError()
                 }
             }
             ActivityType.MISSING_LETTER -> {
-                val targetChar = targetFullString[_missingCharIndex.value].toString()
+                val targetChar = current.word[_missingCharIndex.value].toString()
                 if (char == targetChar) {
-                    _typedText.value = targetFullString
-                    _charStatus.value = List(targetFullString.length) { true }
+                    _typedText.value = current.word // نمایش کامل کلمه بعد از حدس درست
+                    _charStatus.value = List(current.word.length) { true }
                     completeLevel(true)
                 } else {
                     handleError()
@@ -199,17 +203,22 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 val targetChar = targetFullString[_typedText.value.length].toString()
 
                 if (char == targetChar) {
-                    _typedText.value += char
-                    _charStatus.value = _charStatus.value + true
-                    _avatarState.value = "HAPPY"
-                    audioManager.playSoundAsync("pop_sound")
-                    if (_typedText.value.length == targetFullString.length) {
-                        completeLevel(!hasErrorInCurrentWord)
-                    }
+                    processCorrectChar(char, targetFullString)
                 } else {
                     handleError()
                 }
             }
+        }
+    }
+
+    private fun processCorrectChar(char: String, targetFullString: String) {
+        _typedText.value += char
+        _charStatus.value = _charStatus.value + true
+        _avatarState.value = "HAPPY"
+        audioManager.playSoundAsync("pop_sound")
+        
+        if (_typedText.value.length == targetFullString.length) {
+            completeLevel(!hasErrorInCurrentWord)
         }
     }
 
@@ -234,7 +243,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 launch { _uiEvent.emit(UiEvent.Success) }
                 audioManager.playSound("success_fest")
                 delay(500)
-                ttsManager.speak("آفرین! خیلی عالی بود")
+                ttsManager.speak("آفرین! صد آفرین")
             }
             delay(1500)
             _avatarState.value = "IDLE"
@@ -246,15 +255,19 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         if (item.category == "NUMBER") {
             _keyboardKeys.value = persianDigits
         } else {
-            // برای سطح ۱ فقط خود نشانه و تعداد کمی مزاحم
-            val wordChars = if (item.level == 1) setOf(item.character) else item.word.map { it.toString() }.toSet()
-            val mandatory = wordChars.toMutableSet()
+            // استخراج حروف مورد نیاز بر اساس نوع فعالیت
+            val mandatory = if (_activityType.value == ActivityType.PHONICS_INTRO) {
+                setOf(item.character)
+            } else {
+                item.word.map { it.toString() }.toSet()
+            }.toMutableSet()
             
+            // تعداد حروف مزاحم (Distractors) بر اساس سطح برای کنترل بار شناختی
             val distractorCount = when(item.level) {
                 1 -> 2
                 2 -> 3
-                3 -> 5
-                else -> 8
+                3 -> 4
+                else -> 6
             }
 
             val currentItems = filteredItems.value
@@ -283,7 +296,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     fun seedData() {
         viewModelScope.launch {
-            val cumulativeAlphabet = listOf(
+            val alphabetData = listOf(
                 LearningItem("a1", "آ", "آب", "آب", "img_a1", "ALPHABET"),
                 LearningItem("a2", "ب", "بابا", "بابا", "img_a2", "ALPHABET"),
                 LearningItem("a3", "د", "دست", "دست", "img_a3", "ALPHABET"),
@@ -292,6 +305,8 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 LearningItem("a6", "ا", "انار", "انار", "img_a6", "ALPHABET"),
                 LearningItem("a7", "ر", "رنگ", "رنگ", "img_a7", "ALPHABET"),
                 LearningItem("a8", "ن", "نان", "نان", "img_a8", "ALPHABET"),
+                LearningItem("a9", "ز", "زنبور", "زنبور", "img_a9", "ALPHABET"),
+                LearningItem("a10", "ت", "تاب", "تاب", "img_a10", "ALPHABET"),
             )
 
             val orderedNumbers = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
@@ -300,7 +315,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 LearningItem("n$num", num.toString().toPersianDigit(), word, word, "img_n$num", "NUMBER")
             }
 
-            repository.insertInitialData(cumulativeAlphabet + numberItems)
+            repository.insertInitialData(alphabetData + numberItems)
         }
     }
 
