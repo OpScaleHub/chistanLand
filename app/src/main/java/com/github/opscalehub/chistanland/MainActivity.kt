@@ -77,8 +77,8 @@ fun ChistanApp(viewModel: LearningViewModel) {
         composable("map") {
             IslandMapScreen(
                 viewModel = viewModel,
-                onStartItem = { item ->
-                    viewModel.startLearning(item)
+                onStartSession = { item ->
+                    viewModel.startLearningSession(item)
                     navController.navigate("learning")
                 },
                 onStartReview = { allowedItems ->

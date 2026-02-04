@@ -95,7 +95,9 @@ fun LearningSessionScreen(
         viewModel.uiEvent.collectLatest { event ->
             when (event) {
                 is LearningViewModel.UiEvent.Error -> {
-                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    try {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    } catch (e: Exception) {}
                     repeat(4) {
                         shakeOffset.animateTo(15f, animationSpec = tween(40))
                         shakeOffset.animateTo(-15f, animationSpec = tween(40))
@@ -104,10 +106,15 @@ fun LearningSessionScreen(
                 }
                 is LearningViewModel.UiEvent.Success -> {
                     isTransitioning = true
-                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    try {
+                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    } catch (e: Exception) {}
                     showSuccessFestival = true
                     delay(2500)
                     showSuccessFestival = false
+                }
+                is LearningViewModel.UiEvent.SessionComplete -> {
+                    onBack()
                 }
                 else -> {}
             }
@@ -122,9 +129,8 @@ fun LearningSessionScreen(
     }
 
     if (currentItem == null) {
-        LaunchedEffect(Unit) {
-            delay(100)
-            onBack()
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = MangoOrange)
         }
         return
     }
@@ -298,7 +304,7 @@ fun WordCard(item: com.github.opscalehub.chistanland.data.LearningItem, onPlaySo
                     if (emoji != "🌟" && emoji != "🔢") {
                         Text(text = emoji, fontSize = 120.sp)
                     } else {
-                        val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
+                        val imageResId = remember(item.imageUrl) { try { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) } catch(e: Exception) { 0 } }
                         if (imageResId != 0) {
                             Image(
                                 painter = painterResource(id = imageResId),
@@ -369,19 +375,28 @@ fun MagicOrb(index: Int) {
 @Composable
 fun SuccessFestivalOverlay() {
     val context = LocalContext.current
-    val resId = context.resources.getIdentifier("success_fest_anim", "raw", context.packageName)
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(if (resId != 0) resId else 1))
-    Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
-        if (composition != null) {
-            LottieAnimation(composition = composition, iterations = LottieConstants.IterateForever, modifier = Modifier.size(400.dp))
+    val resId = remember { try { context.resources.getIdentifier("success_fest_anim", "raw", context.packageName) } catch(e: Exception) { 0 } }
+    
+    if (resId != 0) {
+        val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(resId))
+        Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
+            LottieAnimation(
+                composition = composition, 
+                iterations = LottieConstants.IterateForever, 
+                modifier = Modifier.size(400.dp)
+            )
+            Text("✨ تبریک! ✨", fontSize = 54.sp, fontWeight = FontWeight.Black, color = MangoOrange, modifier = Modifier.shadow(8.dp, CircleShape))
         }
-        Text("✨ تبریک! ✨", fontSize = 54.sp, fontWeight = FontWeight.Black, color = MangoOrange, modifier = Modifier.shadow(8.dp, CircleShape))
+    } else {
+        Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.6f)), contentAlignment = Alignment.Center) {
+            Text("✨ تبریک! ✨", fontSize = 64.sp, fontWeight = FontWeight.Black, color = MangoOrange)
+        }
     }
 }
 
 fun getEmojiForWord(word: String, category: String): String {
     return when(word) {
-        "آب" -> "💧"; "بابا" -> "🧔"; "باد" -> "🌬️"; "بام" -> "🏠"; "سبد" -> "🧺"
+        "آب" -> "💧"; "بابا" -> "🧔"; "باد" -> "☁️"; "بام" -> "🏠"; "سبد" -> "🧺"
         "نان" -> "🍞"; "ابر" -> "☁️"; "دست" -> "🖐️"; "بوم" -> "🖼️"; "سیب" -> "🍎"
         "باز" -> "🦅"; "آش" -> "🥣"; "کتاب" -> "📚"; "سگ" -> "🐕"; "برف" -> "❄️"
         "شاخ" -> "🦌"; "قایق" -> "⛵"; "لباس" -> "👕"; "تاج" -> "👑"; "چای" -> "🍵"

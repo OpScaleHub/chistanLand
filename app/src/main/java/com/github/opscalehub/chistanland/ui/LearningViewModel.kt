@@ -65,6 +65,8 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val _isReviewMode = MutableStateFlow(false)
     val isReviewMode: StateFlow<Boolean> = _isReviewMode.asStateFlow()
 
+    private val sessionQueue = mutableListOf<LearningItem>()
+
     enum class ActivityType { SPELLING, MISSING_LETTER }
 
     sealed class UiEvent {
@@ -72,6 +74,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         object Success : UiEvent()
         object LevelDown : UiEvent()
         object StartReviewSession : UiEvent()
+        object SessionComplete : UiEvent()
     }
 
     private val persianDigits = listOf("۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹", "۰")
@@ -85,6 +88,29 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         if (items.isEmpty()) return "در حال بارگذاری اطلاعات..."
         val masteredTotal = items.count { it.isMastered }
         return "فرزند شما تاکنون ${masteredTotal.toString().toPersianDigit()} نشانه را به خوبی یاد گرفته است."
+    }
+
+    fun startLearningSession(mainItem: LearningItem) {
+        sessionQueue.clear()
+        sessionQueue.add(mainItem)
+        
+        // Add 1-2 more items from the same category that are not mastered yet
+        val extraItems = filteredItems.value
+            .filter { it.id != mainItem.id && !it.isMastered }
+            .take(2)
+        sessionQueue.addAll(extraItems)
+        
+        startNextInQueue()
+    }
+
+    private fun startNextInQueue() {
+        if (sessionQueue.isEmpty()) {
+            _currentItem.value = null
+            viewModelScope.launch { _uiEvent.emit(UiEvent.SessionComplete) }
+            return
+        }
+        val nextItem = sessionQueue.removeAt(0)
+        startLearning(nextItem, isReview = _isReviewMode.value)
     }
 
     fun startLearning(item: LearningItem, isReview: Boolean = false) {
@@ -176,9 +202,9 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 delay(500)
                 ttsManager.speak("آفرین! خیلی عالی بود")
             }
-            delay(1000)
-            _currentItem.value = null
+            delay(1500)
             _avatarState.value = "IDLE"
+            startNextInQueue()
         }
     }
 
@@ -190,26 +216,43 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             val currentItems = filteredItems.value
             val currentIndex = currentItems.indexOfFirst { it.id == item.id }
 
+            // Ensure word characters are ALWAYS included
+            val mandatory = wordChars.toMutableSet()
+            
+            // Add some "distractors" from learned or reached letters
             val accessibleLetters = if (currentIndex >= 0) {
                 currentItems.take(currentIndex + 1).flatMap { it.word.map { c -> c.toString() } }.toSet()
             } else {
                 currentItems.filter { it.level > 1 || it.isMastered }.flatMap { it.word.map { c -> c.toString() } }.toSet()
             }
 
-            // Ensure the target char for missing letter is always in the pool
-            val targetPool = (wordChars + accessibleLetters).toList().shuffled()
-            _keyboardKeys.value = targetPool.take(12).shuffled()
+            val distractors = (accessibleLetters - mandatory).toList().shuffled()
+            val finalKeys = (mandatory.toList() + distractors).take(12).shuffled()
+            
+            _keyboardKeys.value = finalKeys
         }
     }
 
     fun startReviewSession(allowedItems: List<LearningItem>? = null, onReady: () -> Unit = {}) {
         viewModelScope.launch {
             val currentCat = _selectedCategory.value ?: "ALPHABET"
-            val itemsToReview = repository.getItemsToReviewByCategory(currentCat).first()
-            val pool = itemsToReview.ifEmpty { allItems.value.filter { it.category == currentCat } }
-            val selected = pool.randomOrNull()
-            if (selected != null) {
-                startLearning(selected, isReview = true)
+            
+            // Filter pool to only include items provided (reached ones) or already mastered
+            val pool = if (!allowedItems.isNullOrEmpty()) {
+                allowedItems
+            } else {
+                repository.getItemsToReviewByCategory(currentCat).first().ifEmpty {
+                    allItems.value.filter { it.category == currentCat && (it.level > 1 || it.isMastered) }
+                }
+            }
+
+            if (pool.isNotEmpty()) {
+                sessionQueue.clear()
+                _isReviewMode.value = true
+                val reviewBatch = pool.shuffled().take(3)
+                sessionQueue.addAll(reviewBatch)
+                
+                startNextInQueue()
                 _uiEvent.emit(UiEvent.StartReviewSession)
                 onReady()
             }

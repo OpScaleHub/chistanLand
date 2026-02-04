@@ -44,7 +44,7 @@ import kotlin.math.sin
 @Composable
 fun IslandMapScreen(
     viewModel: LearningViewModel,
-    onStartItem: (LearningItem) -> Unit,
+    onStartSession: (LearningItem) -> Unit,
     onStartReview: (List<LearningItem>) -> Unit,
     onOpenParentPanel: () -> Unit,
     onBack: () -> Unit
@@ -88,7 +88,7 @@ fun IslandMapScreen(
             if (items.isEmpty()) {
                 EmptyMapState { viewModel.seedData() }
             } else {
-                SagaMap(items, category ?: "", onStartItem, onStartReview)
+                SagaMap(items, category ?: "", onStartSession, onStartReview)
             }
         }
 
@@ -170,7 +170,7 @@ fun MapHeader(category: String, onOpenParentPanel: () -> Unit, onBack: () -> Uni
 }
 
 @Composable
-fun SagaMap(items: List<LearningItem>, category: String, onStartItem: (LearningItem) -> Unit, onStartReview: (List<LearningItem>) -> Unit) {
+fun SagaMap(items: List<LearningItem>, category: String, onStartSession: (LearningItem) -> Unit, onStartReview: (List<LearningItem>) -> Unit) {
     val firstLockedIndex = remember(items) {
         val index = items.indexOfFirst { !it.isMastered }
         if (index == -1) items.size - 1 else index
@@ -185,7 +185,7 @@ fun SagaMap(items: List<LearningItem>, category: String, onStartItem: (LearningI
             Column(horizontalAlignment = if (isEven) Alignment.Start else Alignment.End) {
                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = if (isEven) Alignment.CenterStart else Alignment.CenterEnd) {
                     if (index < items.size - 1) PathConnection(isEven, category)
-                    IslandNode(item = item, isLocked = isLocked, modifier = Modifier.padding(horizontal = 40.dp), onClick = { onStartItem(item) })
+                    IslandNode(item = item, isLocked = isLocked, modifier = Modifier.padding(horizontal = 40.dp), onClick = { onStartSession(item) })
                 }
                 if (category == "ALPHABET" && (index + 1) % 3 == 0 && index < items.size - 1) {
                     AmusementParkNode(isLocked = !item.isMastered, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), onClick = { onStartReview(items.take(index + 1)) })

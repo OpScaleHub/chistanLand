@@ -2,29 +2,24 @@ package com.github.opscalehub.chistanland.util
 
 import android.content.Context
 import android.content.Intent
-import android.media.MediaPlayer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
 import java.util.*
 import kotlin.coroutines.resume
 
+/**
+ * Manages Text-to-Speech functionality.
+ * Online fallback removed to prevent emulator instability and "400" errors.
+ */
 class TtsManager(private val context: Context) {
     private var nativeTts: TextToSpeech? = null
     private var isPersianNativeReady = false
     private var isEnglishNativeReady = false
-    private var mediaPlayer: MediaPlayer? = null
     private val TAG = "TtsManager"
     private val PERSIAN_LOCALE = Locale("fa", "IR")
 
@@ -46,6 +41,7 @@ class TtsManager(private val context: Context) {
                 setupProgressListener()
 
                 if (isEnglishNativeReady) {
+                    @Suppress("OPT_IN_USAGE")
                     GlobalScope.launch {
                         delay(2000)
                         speak("TTS system is active", Locale.US)
@@ -90,14 +86,13 @@ class TtsManager(private val context: Context) {
             if (isPersianNativeReady) {
                 speakNative(text, locale)
             } else {
-                Log.w(TAG, "Persian Local TTS Missing. Using Online Fallback...")
-                speakOnline(text, "fa")
+                Log.w(TAG, "Persian Local TTS Missing. No voice output.")
             }
         } else if (locale.language == "en") {
             if (isEnglishNativeReady) {
                 speakNative(text, locale)
             } else {
-                speakOnline(text, "en")
+                Log.w(TAG, "English Local TTS Missing.")
             }
         }
     }
@@ -119,58 +114,6 @@ class TtsManager(private val context: Context) {
         }
     }
 
-    private suspend fun speakOnline(text: String, langCode: String) = withContext(Dispatchers.IO) {
-        try {
-            val encodedText = URLEncoder.encode(text, "UTF-8").replace("+", "%20")
-            val urlString = "https://translate.google.com/translate_tts?ie=UTF-8&tl=$langCode&client=tw-ob&q=$encodedText"
-            
-            val tempFile = File(context.cacheDir, "tts_cache.mp3")
-            val url = URL(urlString)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0")
-            
-            connection.connect()
-            if (connection.responseCode == 200) {
-                connection.inputStream.use { input ->
-                    FileOutputStream(tempFile).use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                withContext(Dispatchers.Main) {
-                    playFile(tempFile)
-                }
-            } else {
-                Log.e(TAG, "Google TTS Server Error: ${connection.responseCode}")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Online Fallback failed: ${e.message}")
-        }
-    }
-
-    private suspend fun playFile(file: File) = suspendCancellableCoroutine<Unit> { continuation ->
-        try {
-            mediaPlayer?.release()
-            mediaPlayer = MediaPlayer().apply {
-                setDataSource(file.absolutePath)
-                setOnPreparedListener { it.start() }
-                setOnCompletionListener { 
-                    it.release()
-                    mediaPlayer = null
-                    if (continuation.isActive) continuation.resume(Unit)
-                }
-                setOnErrorListener { mp, _, _ ->
-                    mp.release()
-                    mediaPlayer = null
-                    if (continuation.isActive) continuation.resume(Unit)
-                    true
-                }
-                prepareAsync()
-            }
-        } catch (e: Exception) {
-            if (continuation.isActive) continuation.resume(Unit)
-        }
-    }
-
     fun openTtsSettings() {
         try {
             val intent = Intent("com.android.settings.TTS_SETTINGS")
@@ -183,6 +126,5 @@ class TtsManager(private val context: Context) {
 
     fun release() {
         nativeTts?.shutdown()
-        mediaPlayer?.release()
     }
 }
