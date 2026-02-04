@@ -12,6 +12,7 @@ data class LearningItem(
     val imageUrl: String,
     val category: String, // "ALPHABET" or "NUMBER"
     val level: Int = 1,
+    val experience: Int = 0, // میزان پیشرفت در سطح فعلی (0 تا 3)
     val lastReviewTime: Long = 0,
     val nextReviewTime: Long = 0,
     val isMastered: Boolean = false

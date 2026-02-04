@@ -12,28 +12,34 @@ class LearningRepository(private val learningDao: LearningDao) {
     }
 
     suspend fun updateProgress(item: LearningItem, isCorrect: Boolean) {
-        val newLevel: Int
+        var newLevel = item.level
+        var newExp = item.experience
         val nextReviewDelay: Long
 
         if (isCorrect) {
-            newLevel = (item.level + 1).coerceAtMost(5)
+            newExp += 1
+            if (newExp >= 3) { // برای هر سطح 3 بار تمرین لازم است
+                newLevel = (item.level + 1).coerceAtMost(5)
+                newExp = 0
+            }
+            
             nextReviewDelay = when (newLevel) {
-                1 -> TimeUnit.MINUTES.toMillis(10)
-                2 -> TimeUnit.HOURS.toMillis(24)
-                3 -> TimeUnit.DAYS.toMillis(4)
-                4 -> TimeUnit.DAYS.toMillis(7)
+                1 -> TimeUnit.MINUTES.toMillis(5)
+                2 -> TimeUnit.HOURS.toMillis(12)
+                3 -> TimeUnit.DAYS.toMillis(2)
+                4 -> TimeUnit.DAYS.toMillis(5)
                 5 -> Long.MAX_VALUE
                 else -> 0
             }
         } else {
-            // رویکرد مهربانانه: در صورت اشتباه، کودک جریمه سنگین نمی‌شود
-            // فقط در همان سطح می‌ماند تا دوباره تمرین کند
-            newLevel = item.level
+            // کاهش تجربه در صورت اشتباه (اما سطح پایین نمی‌آید تا کودک ناامید نشود)
+            newExp = (newExp - 1).coerceAtLeast(0)
             nextReviewDelay = 0
         }
 
         val updatedItem = item.copy(
             level = newLevel,
+            experience = newExp,
             lastReviewTime = System.currentTimeMillis(),
             nextReviewTime = if (newLevel == 5) Long.MAX_VALUE else System.currentTimeMillis() + nextReviewDelay,
             isMastered = newLevel == 5
