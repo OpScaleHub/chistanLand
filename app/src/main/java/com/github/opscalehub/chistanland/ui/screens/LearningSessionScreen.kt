@@ -67,11 +67,12 @@ fun LearningSessionScreen(
     var showSuccessFestival by remember { mutableStateOf(false) }
     var isTransitioning by remember { mutableStateOf(false) }
 
-    val safeKeySize = remember(configuration.screenWidthDp) {
+    val safeKeySize = remember(configuration.screenWidthDp, keyboardKeys.size) {
         val screenWidth = configuration.screenWidthDp.dp
         val horizontalPadding = 48.dp
         val totalSpacing = 40.dp
-        ((screenWidth - horizontalPadding - totalSpacing) / 4).coerceIn(56.dp, 72.dp)
+        val keysPerRow = if (keyboardKeys.size <= 9) 3 else 4
+        ((screenWidth - horizontalPadding - totalSpacing) / keysPerRow).coerceIn(56.dp, 72.dp)
     }
 
     LaunchedEffect(typedText) {
@@ -452,7 +453,11 @@ fun Leaf(modifier: Modifier = Modifier) {
 
 @Composable
 fun KidKeyboard(keys: List<String>, onKeyClick: (String) -> Unit, targetChar: String, showHint: Boolean, keySize: Dp) {
-    val maxKeysPerRow = if (keys.size <= 6) 3 else 4
+    val maxKeysPerRow = when {
+        keys.size <= 4 -> keys.size
+        keys.size <= 9 -> 3
+        else -> 4
+    }
     val rows = keys.chunked(maxKeysPerRow)
     Column(modifier = Modifier.wrapContentWidth(), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         rows.forEach { row ->
