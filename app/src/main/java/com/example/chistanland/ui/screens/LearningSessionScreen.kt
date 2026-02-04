@@ -53,6 +53,9 @@ fun LearningSessionScreen(
     val streak by viewModel.streak.collectAsState()
     val keyboardKeys by viewModel.keyboardKeys.collectAsState()
     val avatarState by viewModel.avatarState.collectAsState()
+    val activityType by viewModel.activityType.collectAsState()
+    val missingCharIndex by viewModel.missingCharIndex.collectAsState()
+    
     val view = LocalView.current
     val scrollState = rememberScrollState()
     val configuration = LocalConfiguration.current
@@ -79,11 +82,9 @@ fun LearningSessionScreen(
         hintBlocked = false
     }
 
-    // Hint timer logic
     LaunchedEffect(lastInputTime, isTransitioning, currentItem) {
         if (isTransitioning || currentItem == null) return@LaunchedEffect
-
-        delay(7000) // Give more time before hinting
+        delay(7000)
         if (!hintBlocked && currentItem != null) {
             showHint = true
             viewModel.playHintInstruction()
@@ -107,14 +108,12 @@ fun LearningSessionScreen(
                     showSuccessFestival = true
                     delay(2500)
                     showSuccessFestival = false
-                    // isTransitioning stays true until the screen actually finishes or currentItem becomes null
                 }
                 else -> {}
             }
         }
     }
 
-    // Important: Reset transition state when a new item arrives
     LaunchedEffect(currentItem?.id) {
         if (currentItem != null) {
             isTransitioning = false
@@ -124,7 +123,7 @@ fun LearningSessionScreen(
 
     if (currentItem == null) {
         LaunchedEffect(Unit) {
-            delay(100) // Small buffer
+            delay(100)
             onBack()
         }
         return
@@ -132,8 +131,14 @@ fun LearningSessionScreen(
 
     val item = currentItem!!
     val targetFullString = remember(item) { if (item.category == "NUMBER") item.character else item.word }
-    val targetChar by remember(typedText, targetFullString) {
-        derivedStateOf { targetFullString.getOrNull(typedText.length)?.toString() ?: "" }
+    val targetChar by remember(typedText, targetFullString, activityType, missingCharIndex) {
+        derivedStateOf { 
+            if (activityType == LearningViewModel.ActivityType.MISSING_LETTER && missingCharIndex != -1) {
+                targetFullString[missingCharIndex].toString()
+            } else {
+                targetFullString.getOrNull(typedText.length)?.toString() ?: "" 
+            }
+        }
     }
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -162,7 +167,7 @@ fun LearningSessionScreen(
                     StreakIndicator(streak = streak)
                 }
 
-                // Scrollable Content
+                // Content
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -187,19 +192,24 @@ fun LearningSessionScreen(
                     )
 
                     Spacer(modifier = Modifier.height(40.dp))
-                    WordDisplay(targetWord = targetFullString, typedText = typedText, charStatus = charStatus, modifier = Modifier.graphicsLayer { translationX = shakeOffset.value })
+                    
+                    WordDisplay(
+                        targetWord = targetFullString,
+                        typedText = typedText,
+                        charStatus = charStatus,
+                        activityType = activityType,
+                        missingCharIndex = missingCharIndex,
+                        modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
+                    )
+                    
                     Spacer(modifier = Modifier.height(32.dp))
                 }
 
-                // Fixed Bottom Keyboard
+                // Keyboard
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Transparent, Color.White.copy(alpha = 0.9f))
-                            )
-                        )
+                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.9f))))
                         .padding(bottom = 32.dp, top = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -221,6 +231,99 @@ fun LearningSessionScreen(
 }
 
 @Composable
+fun WordDisplay(
+    targetWord: String,
+    typedText: String,
+    charStatus: List<Boolean>,
+    activityType: LearningViewModel.ActivityType,
+    missingCharIndex: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        targetWord.forEachIndexed { index, char ->
+            val isMissing = activityType == LearningViewModel.ActivityType.MISSING_LETTER && index == missingCharIndex
+            val status = charStatus.getOrNull(index)
+            val isTyped = index < typedText.length || (activityType == LearningViewModel.ActivityType.MISSING_LETTER && !isMissing)
+            
+            val color = when {
+                status == true -> PastelGreen
+                status == false -> Color.Red
+                isMissing -> MangoOrange
+                else -> SkyBlue.copy(alpha = 0.3f)
+            }
+            
+            val displayText = if (isMissing && !isTyped) "?" else char.toString()
+            val textAlpha = if (isTyped) 1f else 0.5f
+            val scale by animateFloatAsState(if (isTyped) 1.25f else 1f, label = "charScale")
+            
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 4.dp)) {
+                Text(
+                    text = displayText,
+                    fontSize = 44.sp,
+                    fontWeight = FontWeight.Black,
+                    color = color.copy(alpha = textAlpha),
+                    modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale }
+                )
+                Box(
+                    modifier = Modifier
+                        .width(32.dp)
+                        .height(if (isMissing) 8.dp else 6.dp)
+                        .background(color, RoundedCornerShape(3.dp))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun WordCard(item: com.github.opscalehub.chistanland.data.LearningItem, onPlaySound: () -> Unit, modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "wordCard")
+    val floatAnim by infiniteTransition.animateFloat(initialValue = -8f, targetValue = 8f, animationSpec = infiniteRepeatable(tween(2500, easing = EaseInOutSine), RepeatMode.Reverse), label = "float")
+
+    Card(
+        modifier = modifier
+            .sizeIn(minWidth = 260.dp, minHeight = 260.dp, maxWidth = 300.dp, maxHeight = 300.dp)
+            .graphicsLayer { translationY = floatAnim }
+            .clickable { onPlaySound() }
+            .shadow(20.dp, RoundedCornerShape(48.dp)),
+        shape = RoundedCornerShape(48.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val emoji = getEmojiForWord(item.word, item.category)
+                val context = LocalContext.current
+
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
+                    if (emoji != "🌟" && emoji != "🔢") {
+                        Text(text = emoji, fontSize = 120.sp)
+                    } else {
+                        val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
+                        if (imageResId != 0) {
+                            Image(
+                                painter = painterResource(id = imageResId),
+                                contentDescription = item.word,
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))
+                            )
+                        } else {
+                            Text(text = emoji, fontSize = 120.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(item.word, fontSize = 38.sp, fontWeight = FontWeight.Black, color = if (item.category == "NUMBER") MangoOrange else SkyBlue)
+                
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                    Icon(Icons.Default.PlayArrow, null, tint = MangoOrange, modifier = Modifier.size(28.dp))
+                    Text("بشنو", color = MangoOrange, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun SessionQuantityIndicator(numberChar: String) {
     val count = remember(numberChar) {
         when(numberChar) {
@@ -228,7 +331,6 @@ fun SessionQuantityIndicator(numberChar: String) {
             "۶" -> 6; "۷" -> 7; "۸" -> 8; "۹" -> 9; "۰" -> 0; else -> 0
         }
     }
-
     val rows = if (count <= 5) 1 else 2
     val itemsPerRow = if (count <= 5) count else (count + 1) / 2
 
@@ -260,29 +362,8 @@ fun SessionQuantityIndicator(numberChar: String) {
 @Composable
 fun MagicOrb(index: Int) {
     val infiniteTransition = rememberInfiniteTransition(label = "orb")
-    val floatAnim by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 8f,
-        animationSpec = infiniteRepeatable(
-            tween(1000 + (index * 100), easing = EaseInOutSine),
-            RepeatMode.Reverse
-        ),
-        label = "float"
-    )
-
-    Box(
-        modifier = Modifier
-            .size(32.dp)
-            .graphicsLayer { translationY = floatAnim }
-            .background(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color.White, MangoOrange)
-                ),
-                shape = CircleShape
-            )
-            .border(2.dp, Color.White, CircleShape)
-            .shadow(4.dp, CircleShape)
-    )
+    val floatAnim by infiniteTransition.animateFloat(0f, 8f, infiniteRepeatable(tween(1000 + (index * 100), easing = EaseInOutSine), RepeatMode.Reverse), label = "float")
+    Box(modifier = Modifier.size(32.dp).graphicsLayer { translationY = floatAnim }.background(brush = Brush.radialGradient(colors = listOf(Color.White, MangoOrange)), shape = CircleShape).border(2.dp, Color.White, CircleShape).shadow(4.dp, CircleShape))
 }
 
 @Composable
@@ -290,53 +371,11 @@ fun SuccessFestivalOverlay() {
     val context = LocalContext.current
     val resId = context.resources.getIdentifier("success_fest_anim", "raw", context.packageName)
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(if (resId != 0) resId else 1))
-
     Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
         if (composition != null) {
             LottieAnimation(composition = composition, iterations = LottieConstants.IterateForever, modifier = Modifier.size(400.dp))
         }
         Text("✨ تبریک! ✨", fontSize = 54.sp, fontWeight = FontWeight.Black, color = MangoOrange, modifier = Modifier.shadow(8.dp, CircleShape))
-    }
-}
-
-@Composable
-fun WordCard(item: com.github.opscalehub.chistanland.data.LearningItem, onPlaySound: () -> Unit, modifier: Modifier = Modifier) {
-    val infiniteTransition = rememberInfiniteTransition(label = "wordCard")
-    val floatAnim by infiniteTransition.animateFloat(initialValue = -8f, targetValue = 8f, animationSpec = infiniteRepeatable(tween(2500, easing = EaseInOutSine), RepeatMode.Reverse), label = "float")
-
-    Card(
-        modifier = modifier.sizeIn(minWidth = 240.dp, minHeight = 240.dp, maxWidth = 280.dp, maxHeight = 280.dp).graphicsLayer { translationY = floatAnim }.clickable { onPlaySound() }.shadow(20.dp, RoundedCornerShape(48.dp)),
-        shape = RoundedCornerShape(48.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                val emoji = getEmojiForWord(item.word, item.category)
-                val context = LocalContext.current
-
-                if (emoji != "🌟" && emoji != "🔢") {
-                    Text(text = emoji, fontSize = 110.sp)
-                } else {
-                    val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
-                    if (imageResId != 0) {
-                        Image(
-                            painter = painterResource(id = imageResId),
-                            contentDescription = item.word,
-                            modifier = Modifier.size(140.dp).clip(RoundedCornerShape(24.dp))
-                        )
-                    } else {
-                        Text(text = emoji, fontSize = 110.sp)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(item.word, fontSize = 34.sp, fontWeight = FontWeight.Black, color = if (item.category == "NUMBER") MangoOrange else SkyBlue)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.PlayArrow, null, tint = MangoOrange, modifier = Modifier.size(24.dp))
-                    Text("بشنو", color = MangoOrange, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
-            }
-        }
     }
 }
 
@@ -394,24 +433,6 @@ fun PlantProgress(level: Int) {
 @Composable
 fun Leaf(modifier: Modifier = Modifier) {
     Box(modifier = modifier.size(14.dp, 10.dp).background(PastelGreen, RoundedCornerShape(50.dp)))
-}
-
-@Composable
-fun WordDisplay(targetWord: String, typedText: String, charStatus: List<Boolean>, modifier: Modifier = Modifier) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-        targetWord.forEachIndexed { index, char ->
-            val status = charStatus.getOrNull(index)
-            val isTyped = index < typedText.length
-            val color = when { status == true -> PastelGreen; status == false -> Color.Red; else -> SkyBlue.copy(alpha = 0.3f) }
-            val displayText = if (isTyped) typedText[index].toString() else char.toString()
-            val textAlpha = if (isTyped) 1f else 0.5f
-            val scale by animateFloatAsState(if (isTyped) 1.25f else 1f, label = "charScale")
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 4.dp)) {
-                Text(displayText, fontSize = 40.sp, fontWeight = FontWeight.Black, color = color.copy(alpha = textAlpha), modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale })
-                Box(modifier = Modifier.width(30.dp).height(6.dp).background(color, RoundedCornerShape(3.dp)))
-            }
-        }
-    }
 }
 
 @Composable

@@ -42,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
@@ -67,7 +68,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.lottie.compose)
     implementation(libs.coil.compose)
-    implementation(libs.sherpa.onnx)
+    implementation(libs.google.generativeai)
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

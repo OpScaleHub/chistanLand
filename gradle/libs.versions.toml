@@ -10,7 +10,7 @@ room = "2.6.1"
 navigationCompose = "2.8.3"
 lottieCompose = "6.5.2"
 coil = "2.7.0"
-sherpaOnnx = "1.10.32"
+generativeai = "0.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -32,7 +32,7 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottieCompose" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
-sherpa-onnx = { group = "com.k2fsa.sherpa.onnx", name = "sherpa-onnx", version.ref = "sherpaOnnx" }
+google-generativeai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

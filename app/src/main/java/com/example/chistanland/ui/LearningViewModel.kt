@@ -12,6 +12,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 class LearningViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: LearningRepository = LearningRepository(
@@ -41,6 +42,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val _charStatus = MutableStateFlow<List<Boolean>>(emptyList())
     val charStatus: StateFlow<List<Boolean>> = _charStatus.asStateFlow()
 
+    private val _activityType = MutableStateFlow(ActivityType.SPELLING)
+    val activityType: StateFlow<ActivityType> = _activityType.asStateFlow()
+
+    private val _missingCharIndex = MutableStateFlow(-1)
+    val missingCharIndex: StateFlow<Int> = _missingCharIndex.asStateFlow()
+
     private var hasErrorInCurrentWord: Boolean = false
 
     private val _streak = MutableStateFlow(0)
@@ -57,6 +64,8 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     private val _isReviewMode = MutableStateFlow(false)
     val isReviewMode: StateFlow<Boolean> = _isReviewMode.asStateFlow()
+
+    enum class ActivityType { SPELLING, MISSING_LETTER }
 
     sealed class UiEvent {
         object Error : UiEvent()
@@ -85,51 +94,90 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _typedText.value = ""
         _charStatus.value = emptyList()
         hasErrorInCurrentWord = false
+        
+        // Decide Activity Type: 40% chance for "Missing Letter" if level > 2
+        _activityType.value = if (!isReview && item.level > 2 && Random.nextFloat() < 0.4f) {
+            ActivityType.MISSING_LETTER
+        } else {
+            ActivityType.SPELLING
+        }
+
+        if (_activityType.value == ActivityType.MISSING_LETTER) {
+            _missingCharIndex.value = Random.nextInt(item.word.length)
+        } else {
+            _missingCharIndex.value = -1
+        }
+
         generateAdaptiveKeyboard(item)
 
         narrativeJob = viewModelScope.launch {
             _avatarState.value = "SPEAKING"
-            
-            val instruction = if (item.category == "NUMBER") "بنویس عدد " else "بنویس کلمه "
-            val textToSpeak = instruction + item.word
-            
-            ttsManager.speak(textToSpeak)
+            val prefix = if (item.category == "NUMBER") "بنویس عدد " else "بنویس کلمه "
+            val instruction = when (_activityType.value) {
+                ActivityType.SPELLING -> "$prefix ${item.word}"
+                ActivityType.MISSING_LETTER -> "کدوم نشانه توی این کلمه گم شده؟"
+            }
+            ttsManager.speak(instruction)
             _avatarState.value = "IDLE"
         }
     }
 
-    fun startReviewSession(allowedItems: List<LearningItem>? = null, onReady: () -> Unit = {}) {
-        val currentCat = _selectedCategory.value ?: "ALPHABET"
-        viewModelScope.launch {
-            val itemsToReview = repository.getItemsToReviewByCategory(currentCat).first()
-
-            val basePool = if (allowedItems != null) {
-                itemsToReview.filter { item -> allowedItems.any { it.id == item.id } }
+    fun onCharTyped(char: String) {
+        val current = _currentItem.value ?: return
+        val targetFullString = if (current.category == "NUMBER") current.character else current.word
+        
+        if (_activityType.value == ActivityType.MISSING_LETTER) {
+            val targetChar = targetFullString[_missingCharIndex.value].toString()
+            if (char == targetChar) {
+                _typedText.value = targetFullString
+                _charStatus.value = List(targetFullString.length) { true }
+                completeLevel(true)
             } else {
-                itemsToReview
+                handleError()
             }
+        } else {
+            if (_typedText.value.length >= targetFullString.length) return
+            val targetChar = targetFullString[_typedText.value.length].toString()
 
-            val pool = if (basePool.isNotEmpty()) {
-                basePool
+            if (char == targetChar) {
+                _typedText.value += char
+                _charStatus.value = _charStatus.value + true
+                _avatarState.value = "HAPPY"
+                audioManager.playSoundAsync("pop_sound")
+                if (_typedText.value.length == targetFullString.length) {
+                    completeLevel(!hasErrorInCurrentWord)
+                }
             } else {
-                val fallbackPool = allowedItems ?: allItems.value.filter { it.category == currentCat }
-                fallbackPool.filter { it.level > 1 || it.isMastered }
-            }
-
-            val selected = pool.randomOrNull()
-            if (selected != null) {
-                startLearning(selected, isReview = true)
-                _uiEvent.emit(UiEvent.StartReviewSession)
-                onReady()
+                handleError()
             }
         }
     }
 
-    fun playHintInstruction() {
+    private fun handleError() {
+        hasErrorInCurrentWord = true
+        _avatarState.value = "THINKING"
+        viewModelScope.launch {
+            _uiEvent.emit(UiEvent.Error)
+            delay(1200)
+            if (_avatarState.value == "THINKING") _avatarState.value = "IDLE"
+        }
+        audioManager.playSoundAsync("error_sound")
+    }
+
+    private fun completeLevel(isCorrect: Boolean) {
         narrativeJob?.cancel()
         narrativeJob = viewModelScope.launch {
-            _avatarState.value = "SPEAKING"
-            ttsManager.speak("نشانه مورد نظر رو پیدا کن")
+            val item = _currentItem.value ?: return@launch
+            repository.updateProgress(item, isCorrect)
+            if (isCorrect) {
+                _streak.value += 1
+                launch { _uiEvent.emit(UiEvent.Success) }
+                audioManager.playSound("success_fest")
+                delay(500)
+                ttsManager.speak("آفرین! خیلی عالی بود")
+            }
+            delay(1000)
+            _currentItem.value = null
             _avatarState.value = "IDLE"
         }
     }
@@ -148,54 +196,31 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 currentItems.filter { it.level > 1 || it.isMastered }.flatMap { it.word.map { c -> c.toString() } }.toSet()
             }
 
-            val totalPool = (wordChars + accessibleLetters).toList().shuffled()
-            _keyboardKeys.value = totalPool.take(12).shuffled()
+            // Ensure the target char for missing letter is always in the pool
+            val targetPool = (wordChars + accessibleLetters).toList().shuffled()
+            _keyboardKeys.value = targetPool.take(12).shuffled()
         }
     }
 
-    fun onCharTyped(char: String) {
-        val current = _currentItem.value ?: return
-        val targetFullString = if (current.category == "NUMBER") current.character else current.word
-        if (_typedText.value.length >= targetFullString.length) return
-        val targetChar = targetFullString[_typedText.value.length].toString()
-
-        if (char == targetChar) {
-            _typedText.value += char
-            _charStatus.value = _charStatus.value + true
-            _avatarState.value = "HAPPY"
-            // SFX can be async as they don't block narrative flow
-            audioManager.playSoundAsync("pop_sound")
-            if (_typedText.value.length == targetFullString.length) {
-                completeLevel(!hasErrorInCurrentWord)
+    fun startReviewSession(allowedItems: List<LearningItem>? = null, onReady: () -> Unit = {}) {
+        viewModelScope.launch {
+            val currentCat = _selectedCategory.value ?: "ALPHABET"
+            val itemsToReview = repository.getItemsToReviewByCategory(currentCat).first()
+            val pool = itemsToReview.ifEmpty { allItems.value.filter { it.category == currentCat } }
+            val selected = pool.randomOrNull()
+            if (selected != null) {
+                startLearning(selected, isReview = true)
+                _uiEvent.emit(UiEvent.StartReviewSession)
+                onReady()
             }
-        } else {
-            hasErrorInCurrentWord = true
-            _avatarState.value = "THINKING"
-            viewModelScope.launch {
-                _uiEvent.emit(UiEvent.Error)
-                delay(1200)
-                if (_avatarState.value == "THINKING") _avatarState.value = "IDLE"
-            }
-            audioManager.playSoundAsync("error_sound")
         }
     }
 
-    private fun completeLevel(isCorrect: Boolean) {
+    fun playHintInstruction() {
         narrativeJob?.cancel()
         narrativeJob = viewModelScope.launch {
-            val item = _currentItem.value ?: return@launch
-            repository.updateProgress(item, isCorrect)
-            if (isCorrect) {
-                _streak.value += 1
-                // Play success music and show celebration simultaneously
-                launch { _uiEvent.emit(UiEvent.Success) }
-                // SFX for success is still good to have, or we can use TTS to say "آفرین"
-                audioManager.playSound("success_fest")
-                delay(500)
-                ttsManager.speak("آفرین! خیلی عالی بود")
-            }
-            delay(1000) // Celebration time
-            _currentItem.value = null
+            _avatarState.value = "SPEAKING"
+            ttsManager.speak("نشانه مورد نظر رو پیدا کن")
             _avatarState.value = "IDLE"
         }
     }

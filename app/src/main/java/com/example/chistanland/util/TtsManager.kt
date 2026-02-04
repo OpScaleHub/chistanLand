@@ -2,14 +2,10 @@ package com.github.opscalehub.chistanland.util
 
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioTrack
 import android.media.MediaPlayer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
-import com.k2fsa.sherpa.onnx.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -29,13 +25,11 @@ class TtsManager(private val context: Context) {
     private var isPersianNativeReady = false
     private var isEnglishNativeReady = false
     private var mediaPlayer: MediaPlayer? = null
-    private var sherpaTts: OfflineTts? = null
     private val TAG = "TtsManager"
     private val PERSIAN_LOCALE = Locale("fa", "IR")
 
     init {
         initNativeTts()
-        initSherpaTts()
     }
 
     private fun initNativeTts() {
@@ -60,36 +54,6 @@ class TtsManager(private val context: Context) {
             } else {
                 Log.e(TAG, "Native TTS initialization failed")
             }
-        }
-    }
-
-    private fun initSherpaTts() {
-        try {
-            // Expected paths in assets. User should provide these.
-            // Using fa_IR-amir-medium as default name for consistency
-            val config = OfflineTtsModelConfig(
-                vits = OfflineTtsVitsConfig(
-                    model = "persian_tts/model.onnx",
-                    tokens = "persian_tts/tokens.txt",
-                    dataDir = "persian_tts/espeak-ng-data",
-                    noiseScale = 0.667f,
-                    noiseScaleW = 0.8f,
-                    lengthScale = 1.0f
-                ),
-                numThreads = 1,
-                debug = false
-            )
-            
-            val ttsConfig = OfflineTtsConfig(
-                model = config,
-                ruleFsts = "",
-                maxNumSentences = 1
-            )
-
-            sherpaTts = OfflineTts(context.assets, ttsConfig)
-            Log.i(TAG, "Sherpa-ONNX Persian TTS Initialized successfully")
-        } catch (e: Exception) {
-            Log.w(TAG, "Sherpa-ONNX initialization skipped or failed: ${e.message}. (Model files might be missing in assets/persian_tts/)")
         }
     }
 
@@ -123,9 +87,7 @@ class TtsManager(private val context: Context) {
         Log.d(TAG, "Speaking: '$text' (${locale.language})")
         
         if (isPersian) {
-            if (sherpaTts != null) {
-                speakSherpa(text)
-            } else if (isPersianNativeReady) {
+            if (isPersianNativeReady) {
                 speakNative(text, locale)
             } else {
                 Log.w(TAG, "Persian Local TTS Missing. Using Online Fallback...")
@@ -138,67 +100,6 @@ class TtsManager(private val context: Context) {
                 speakOnline(text, "en")
             }
         }
-    }
-
-    private suspend fun speakSherpa(text: String) = withContext(Dispatchers.Default) {
-        val tts = sherpaTts ?: return@withContext
-        try {
-            val audio = tts.generate(text)
-            if (audio.samples.isNotEmpty()) {
-                playSherpaAudio(audio)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Sherpa TTS generation failed: ${e.message}")
-        }
-    }
-
-    private suspend fun playSherpaAudio(audio: OfflineTtsGeneratedAudio) = suspendCancellableCoroutine<Unit> { continuation ->
-        val samples = audio.samples
-        val sampleRate = audio.sampleRate
-        
-        val bufferSize = AudioTrack.getMinBufferSize(
-            sampleRate,
-            AudioFormat.CHANNEL_OUT_MONO,
-            AudioFormat.ENCODING_PCM_FLOAT
-        )
-
-        val audioTrack = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build()
-            )
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                    .setSampleRate(sampleRate)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build()
-            )
-            .setBufferSizeInBytes(maxOf(bufferSize, samples.size * 4))
-            .setTransferMode(AudioTrack.MODE_STATIC)
-            .build()
-
-        audioTrack.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
-        
-        audioTrack.setNotificationMarkerPosition(samples.size)
-        audioTrack.setPlaybackPositionUpdateListener(object : AudioTrack.OnPlaybackPositionUpdateListener {
-            override fun onMarkerReached(track: AudioTrack?) {
-                track?.release()
-                if (continuation.isActive) continuation.resume(Unit)
-            }
-            override fun onPeriodicNotification(track: AudioTrack?) {}
-        })
-
-        continuation.invokeOnCancellation {
-            try {
-                audioTrack.stop()
-                audioTrack.release()
-            } catch (e: Exception) {}
-        }
-
-        audioTrack.play()
     }
 
     private suspend fun speakNative(text: String, locale: Locale) = suspendCancellableCoroutine<Unit> { continuation ->
@@ -283,6 +184,5 @@ class TtsManager(private val context: Context) {
     fun release() {
         nativeTts?.shutdown()
         mediaPlayer?.release()
-        sherpaTts?.release()
     }
 }
