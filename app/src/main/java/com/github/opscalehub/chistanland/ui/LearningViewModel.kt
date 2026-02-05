@@ -67,13 +67,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     private val sessionQueue = mutableListOf<LearningItem>()
 
-    // انواع فعالیت‌های آموزشی بر اساس سطح پیشرفت در عرض (Horizontal Depth)
     enum class ActivityType { 
-        PHONICS_INTRO,      // آشنایی با صدای نشانه (فقط کلیک روی خود نشانه)
-        MISSING_LETTER,     // تعمیق یادگیری با پیدا کردن حرف گمشده در کلمه
-        SPELLING,           // تثبیت یادگیری با نوشتن کامل کلمه
-        WORD_RECOGNITION,   // تشخیص کلمه (مرور تصویری)
-        QUICK_RECALL        // تسلط نهایی (مرور سریع)
+        PHONICS_INTRO,      // مرحله تطبیق: تایپ کل کلمه با کیبورد محدود (بدون مزاحم)
+        MISSING_LETTER,     // مرحله تعمیق: پیدا کردن حرف گمشده
+        SPELLING,           // مرحله تثبیت: نوشتن کامل کلمه با مزاحم‌های بیشتر
+        WORD_RECOGNITION,   
+        QUICK_RECALL        
     }
 
     sealed class UiEvent {
@@ -94,7 +93,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         sessionQueue.clear()
         sessionQueue.add(mainItem)
         
-        // اضافه کردن آیتم‌های قبلی برای مرور در عرض (فقط مواردی که حداقل یک بار پاس شده‌اند)
         val extraItems = filteredItems.value
             .filter { it.id < mainItem.id && it.lastReviewTime > 0 }
             .shuffled()
@@ -128,9 +126,9 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         narrativeJob = viewModelScope.launch {
             _avatarState.value = "SPEAKING"
             val instruction = when (_activityType.value) {
-                ActivityType.PHONICS_INTRO -> "نشانه «${item.character}» مثل «${item.word}». روی «${item.character}» بزن!"
+                ActivityType.PHONICS_INTRO -> "بیا با هم بنویسیم: «${item.word}»"
                 ActivityType.MISSING_LETTER -> "توی کلمه «${item.word}» کدوم نشانه گم شده؟"
-                ActivityType.SPELLING -> "بیا بنویسیم: «${item.word}»"
+                ActivityType.SPELLING -> "حالا خودت بنویس: «${item.word}»"
                 ActivityType.WORD_RECOGNITION -> "تصویر «${item.word}» کجاست؟"
                 ActivityType.QUICK_RECALL -> "زود بنویس: «${item.word}»"
             }
@@ -146,7 +144,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _charStatus.value = emptyList()
         hasErrorInCurrentWord = false
         
-        // تعیین نوع فعالیت بر اساس سطح آیتم (پیمایش طولی و عرضی)
         _activityType.value = decideActivityType(item, isReview)
 
         if (_activityType.value == ActivityType.MISSING_LETTER) {
@@ -173,26 +170,16 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     fun onCharTyped(char: String) {
         val current = _currentItem.value ?: return
         
-        // منطق هدف: در سطح ۱ هدف فقط نشانه است، در سطوح بالاتر کل کلمه
-        val targetFullString = if (current.category == "NUMBER" || _activityType.value == ActivityType.PHONICS_INTRO) {
-            current.character 
-        } else {
-            current.word
-        }
+        // در تمامی فعالیت‌های الفبایی، هدف نهایی تکمیل کل کلمه است
+        val targetFullString = if (current.category == "NUMBER") current.character else current.word
         
         when (_activityType.value) {
-            ActivityType.PHONICS_INTRO -> {
-                if (char == targetFullString) {
-                    processCorrectChar(char, targetFullString)
-                } else {
-                    handleError()
-                }
-            }
             ActivityType.MISSING_LETTER -> {
-                val targetChar = current.word[_missingCharIndex.value].toString()
+                val targetChar = targetFullString[_missingCharIndex.value].toString()
                 if (char == targetChar) {
-                    _typedText.value = current.word // نمایش کامل کلمه بعد از حدس درست
-                    _charStatus.value = List(current.word.length) { true }
+                    // بعد از حدس درست حرف گمشده، کل کلمه نمایش داده می‌شود
+                    _typedText.value = targetFullString
+                    _charStatus.value = List(targetFullString.length) { true }
                     completeLevel(true)
                 } else {
                     handleError()
@@ -243,7 +230,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 launch { _uiEvent.emit(UiEvent.Success) }
                 audioManager.playSound("success_fest")
                 delay(500)
-                ttsManager.speak("آفرین! صد آفرین")
+                ttsManager.speak("آفرین")
             }
             delay(1500)
             _avatarState.value = "IDLE"
@@ -255,43 +242,32 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         if (item.category == "NUMBER") {
             _keyboardKeys.value = persianDigits
         } else {
-            // استخراج حروف مورد نیاز بر اساس نوع فعالیت
-            val mandatory = if (_activityType.value == ActivityType.PHONICS_INTRO) {
-                setOf(item.character)
-            } else {
-                item.word.map { it.toString() }.toSet()
-            }.toMutableSet()
+            val wordChars = item.word.map { it.toString() }.toSet()
+            val mandatory = wordChars.toMutableSet()
             
-            // تعداد حروف مزاحم بر اساس سطح
+            // در سطح ۱ (PHONICS_INTRO)، هیچ حرف مزاحمی نمایش نمی‌دهیم تا کودک فقط حروف کلمه را تطبیق دهد
             val distractorCount = when(item.level) {
-                1 -> 2
-                2 -> 3
+                1 -> 0 
+                2 -> 2
                 3 -> 4
                 else -> 6
             }
 
+            if (distractorCount == 0) {
+                _keyboardKeys.value = mandatory.toList().shuffled()
+                return
+            }
+
             val currentItems = filteredItems.value
-            // یادگیری تدریجی: فقط حروفی را به عنوان مزاحم انتخاب کن که قبلاً تدریس شده‌اند
+            // انتخاب مزاحم‌ها فقط از حروفی که قبلاً تدریس شده‌اند و در همان دسته‌بندی هستند
             val learnedLetters = currentItems
-                .filter { it.id < item.id }
+                .filter { it.id < item.id && it.category == item.category }
                 .flatMap { it.word.map { c -> c.toString() } }
                 .toSet()
             
-            // اگر هنوز حرفی یاد نگرفته (اولین مرحله)، از حروف خود کلمه استفاده کن
-            val potentialDistractors = if (learnedLetters.isEmpty()) {
-                (item.word.map { it.toString() }.toSet() - mandatory).toList()
-            } else {
-                (learnedLetters - mandatory).toList()
-            }
+            val potentialDistractors = (learnedLetters - mandatory).toList()
             
-            // اگر باز هم لیست مزاحم‌ها خالی بود (مورد خاص مرحله اول)، از یک لیست امن پایه استفاده کن
-            val safeDistractors = if (potentialDistractors.isEmpty()) {
-                listOf("ا", "ب", "آ").filter { it !in mandatory }
-            } else {
-                potentialDistractors
-            }
-            
-            val distractors = safeDistractors.shuffled().take(distractorCount)
+            val distractors = potentialDistractors.shuffled().take(distractorCount)
             _keyboardKeys.value = (mandatory.toList() + distractors).shuffled()
         }
     }

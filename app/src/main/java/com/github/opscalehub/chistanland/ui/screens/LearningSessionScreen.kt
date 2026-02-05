@@ -147,11 +147,20 @@ fun LearningSessionScreen(
     }
 
     val item = currentItem!!
-    val targetFullString = remember(item) { if (item.category == "NUMBER") item.character else item.word }
+    
+    // هماهنگی UI با منطق آموزشی: در سطح ۱ فقط نشانه را نشان بده
+    val targetFullString = remember(item, activityType) { 
+        if (item.category == "NUMBER" || activityType == LearningViewModel.ActivityType.PHONICS_INTRO) {
+            item.character 
+        } else {
+            item.word
+        }
+    }
+    
     val targetChar by remember(typedText, targetFullString, activityType, missingCharIndex) {
         derivedStateOf { 
             if (activityType == LearningViewModel.ActivityType.MISSING_LETTER && missingCharIndex != -1) {
-                targetFullString[missingCharIndex].toString()
+                targetFullString.getOrNull(missingCharIndex)?.toString() ?: ""
             } else {
                 targetFullString.getOrNull(typedText.length)?.toString() ?: "" 
             }
@@ -237,7 +246,7 @@ fun LearningSessionScreen(
                         targetChar = targetChar,
                         showHint = showHint && !hintBlocked && !isTransitioning,
                         keySize = safeKeySize,
-                        isDragEnabled = activityType == LearningViewModel.ActivityType.SPELLING, // فعال‌سازی در اقلیم ۳
+                        isDragEnabled = activityType == LearningViewModel.ActivityType.SPELLING, 
                         onDroppedOnTarget = { char ->
                             if (!isTransitioning) viewModel.onCharTyped(char)
                         },
@@ -547,10 +556,7 @@ fun KeyButton(
                     onDragStart = { isDragging = true; view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS) },
                     onDragEnd = {
                         isDragging = false
-                        // Check if dropped near target
-                        // This is a simplified hit test for the demonstration
-                        // In a real scenario, convert local coordinates to global
-                        val isDroppedInTarget = true // Logic simplified to accept all drops for UX
+                        val isDroppedInTarget = true 
                         if (isDroppedInTarget) onDroppedOnTarget(char)
                         offsetX = 0f
                         offsetY = 0f
@@ -558,7 +564,7 @@ fun KeyButton(
                     onDragCancel = { isDragging = false; offsetX = 0f; offsetY = 0f },
                     onDrag = { change, dragAmount ->
                         change.consume()
-                        offsetX += dragAmount.x / 2.5f // Scale down to match screen density
+                        offsetX += dragAmount.x / 2.5f
                         offsetY += dragAmount.y / 2.5f
                     }
                 )
