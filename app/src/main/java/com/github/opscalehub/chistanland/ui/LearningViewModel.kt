@@ -68,9 +68,9 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val sessionQueue = mutableListOf<LearningItem>()
 
     enum class ActivityType { 
-        PHONICS_INTRO,      // مرحله تطبیق: تایپ کل کلمه با کیبورد محدود (بدون مزاحم)
-        MISSING_LETTER,     // مرحله تعمیق: پیدا کردن حرف گمشده
-        SPELLING,           // مرحله تثبیت: نوشتن کامل کلمه با مزاحم‌های بیشتر
+        PHONICS_INTRO,      
+        MISSING_LETTER,     
+        SPELLING,           
         WORD_RECOGNITION,   
         QUICK_RECALL        
     }
@@ -284,7 +284,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     fun seedData() {
         viewModelScope.launch {
-            // توالی یادگیری تجمعی (Cumulative Phonics)
+            // توالی یادگیری تجمعی (Cumulative Phonics) - گسترش یافته
             val alphabetData = listOf(
                 LearningItem("a01", "آ", "آ", "آ", "img_a1", "ALPHABET"),
                 LearningItem("a02", "ب", "آب", "آب", "img_a2", "ALPHABET"),
@@ -296,6 +296,11 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 LearningItem("a08", "ن", "نان", "نان", "img_a8", "ALPHABET"),
                 LearningItem("a09", "ز", "باز", "باز", "img_a9", "ALPHABET"),
                 LearningItem("a10", "ت", "دست", "دست", "img_a10", "ALPHABET"),
+                LearningItem("a11", "ر", "تار", "تار", "img_a11", "ALPHABET"),
+                LearningItem("a12", "و", "توت", "توت", "img_a12", "ALPHABET"),
+                LearningItem("a13", "ی", "تیر", "تیر", "img_a13", "ALPHABET"),
+                LearningItem("a14", "ک", "کتاب", "کتاب", "img_a14", "ALPHABET"),
+                LearningItem("a15", "گ", "سگ", "سگ", "img_a15", "ALPHABET"),
             )
 
             val orderedNumbers = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
