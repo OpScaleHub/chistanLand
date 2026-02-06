@@ -148,9 +148,9 @@ fun LearningSessionScreen(
 
     val item = currentItem!!
     
-    // هماهنگی UI با منطق آموزشی: در سطح ۱ فقط نشانه را نشان بده
+    // هماهنگی UI با منطق آموزشی
     val targetFullString = remember(item, activityType) { 
-        if (item.category == "NUMBER" || activityType == LearningViewModel.ActivityType.PHONICS_INTRO) {
+        if (item.category == "NUMBER") {
             item.character 
         } else {
             item.word
@@ -428,13 +428,9 @@ fun SuccessFestivalOverlay() {
 
 fun getEmojiForWord(word: String, category: String): String {
     return when(word) {
-        "آب" -> "💧"; "بابا" -> "🧔"; "باد" -> "☁️"; "بام" -> "🏠"; "سبد" -> "🧺"
-        "نان" -> "🍞"; "ابر" -> "☁️"; "دست" -> "🖐️"; "بوم" -> "🖼️"; "سیب" -> "🍎"
-        "باز" -> "🦅"; "آش" -> "🥣"; "کتاب" -> "📚"; "سگ" -> "🐕"; "برف" -> "❄️"
-        "شاخ" -> "🦌"; "قایق" -> "⛵"; "لباس" -> "👕"; "تاج" -> "👑"; "چای" -> "🍵"
-        "کوه" -> "⛰️"; "ژله" -> "🍮"; "صورت" -> "👤"; "ذرت" -> "🌽"; "عینک" -> "👓"
-        "ثروت" -> "💰"; "حلزون" -> "🐌"; "ضامن" -> "🛡️"; "طوطی" -> "🦜"; "غذا" -> "🍲"; "ظرف" -> "🍽️"
-        else -> if (category == "NUMBER") "🔢" else "🌟"
+        "آ" -> "🌟"; "آب" -> "💧"; "باد" -> "🌬️"; "بام" -> "🏠"; "بار" -> "🍎"
+        "سبد" -> "🧺"; "بابا" -> "🧔"; "نان" -> "🍞"; "باز" -> "🦅"; "دست" -> "🖐️"
+        else -> "🌟"
     }
 }
 
@@ -499,7 +495,10 @@ fun KidKeyboard(
         keys.size <= 9 -> 3
         else -> 4
     }
-    val rows = keys.chunked(maxKeysPerRow)
+    // معکوس کردن لیست کلیدها برای نمایش درست در RTL
+    val reversedKeys = keys.reversed()
+    val rows = reversedKeys.chunked(maxKeysPerRow)
+    
     Column(modifier = Modifier.wrapContentWidth(), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         rows.forEach { row ->
             Row(modifier = Modifier.wrapContentWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)) {
