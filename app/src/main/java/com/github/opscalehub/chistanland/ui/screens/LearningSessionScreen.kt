@@ -333,19 +333,15 @@ fun WordCard(item: com.github.opscalehub.chistanland.data.LearningItem, onPlaySo
                 val context = LocalContext.current
 
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
-                    if (emoji != "🌟" && emoji != "🔢") {
-                        Text(text = emoji, fontSize = 120.sp)
+                    val imageResId = remember(item.imageUrl) { try { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) } catch(e: Exception) { 0 } }
+                    if (imageResId != 0) {
+                        Image(
+                            painter = painterResource(id = imageResId),
+                            contentDescription = item.word,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))
+                        )
                     } else {
-                        val imageResId = remember(item.imageUrl) { try { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) } catch(e: Exception) { 0 } }
-                        if (imageResId != 0) {
-                            Image(
-                                painter = painterResource(id = imageResId),
-                                contentDescription = item.word,
-                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))
-                            )
-                        } else {
-                            Text(text = emoji, fontSize = 120.sp)
-                        }
+                        Text(text = emoji, fontSize = 120.sp)
                     }
                 }
 
@@ -428,7 +424,7 @@ fun SuccessFestivalOverlay() {
 
 fun getEmojiForWord(word: String, category: String): String {
     return when(word) {
-        "آ" -> "🌟"; "آب" -> "💧"; "باد" -> "🌬️"; "بام" -> "🏠"; "بار" -> "🍎"
+        "آ" -> "🌟"; "آب" -> "💧"; "باد" -> "🌬️"; "بام" -> "🏠"; "بار" -> "⚖️" // Changed to a scale for 'load'
         "سبد" -> "🧺"; "بابا" -> "🧔"; "نان" -> "🍞"; "باز" -> "🦅"; "دست" -> "🖐️"
         else -> "🌟"
     }
@@ -495,7 +491,6 @@ fun KidKeyboard(
         keys.size <= 9 -> 3
         else -> 4
     }
-    // معکوس کردن لیست کلیدها برای نمایش درست در RTL
     val reversedKeys = keys.reversed()
     val rows = reversedKeys.chunked(maxKeysPerRow)
     
