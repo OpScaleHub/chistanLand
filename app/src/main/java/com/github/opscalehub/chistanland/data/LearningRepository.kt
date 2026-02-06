@@ -18,23 +18,27 @@ class LearningRepository(private val learningDao: LearningDao) {
 
         if (isCorrect) {
             newExp += 1
-            if (newExp >= 3) { // برای هر سطح 3 بار تمرین لازم است
+            
+            // شتاب‌دهی در گام‌های نخست: جهش سریع از سطح ۱ به ۲
+            val requiredExp = if (item.level == 1) 1 else 3
+
+            if (newExp >= requiredExp) {
                 newLevel = (item.level + 1).coerceAtMost(5)
                 newExp = 0
             }
             
             nextReviewDelay = when (newLevel) {
                 1 -> TimeUnit.MINUTES.toMillis(5)
-                2 -> TimeUnit.HOURS.toMillis(12)
-                3 -> TimeUnit.DAYS.toMillis(2)
-                4 -> TimeUnit.DAYS.toMillis(5)
-                5 -> Long.MAX_VALUE
+                2 -> TimeUnit.HOURS.toMillis(1)
+                3 -> TimeUnit.DAYS.toMillis(1)
+                4 -> TimeUnit.DAYS.toMillis(3)
+                5 -> Long.MAX_VALUE // تسلط کامل، دیگر نیاز به مرور اتوماتیک نیست
                 else -> 0
             }
         } else {
             // کاهش تجربه در صورت اشتباه (اما سطح پایین نمی‌آید تا کودک ناامید نشود)
             newExp = (newExp - 1).coerceAtLeast(0)
-            nextReviewDelay = 0
+            nextReviewDelay = TimeUnit.MINUTES.toMillis(10) // مرور مجدد آیتم اشتباه در آینده نزدیک
         }
 
         val updatedItem = item.copy(

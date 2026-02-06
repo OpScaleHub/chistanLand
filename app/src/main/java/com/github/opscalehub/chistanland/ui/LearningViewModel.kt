@@ -169,15 +169,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     fun onCharTyped(char: String) {
         val current = _currentItem.value ?: return
-        
-        // در تمامی فعالیت‌های الفبایی، هدف نهایی تکمیل کل کلمه است
         val targetFullString = if (current.category == "NUMBER") current.character else current.word
         
         when (_activityType.value) {
             ActivityType.MISSING_LETTER -> {
                 val targetChar = targetFullString[_missingCharIndex.value].toString()
                 if (char == targetChar) {
-                    // بعد از حدس درست حرف گمشده، کل کلمه نمایش داده می‌شود
                     _typedText.value = targetFullString
                     _charStatus.value = List(targetFullString.length) { true }
                     completeLevel(true)
@@ -245,7 +242,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             val wordChars = item.word.map { it.toString() }.toSet()
             val mandatory = wordChars.toMutableSet()
             
-            // در سطح ۱ (PHONICS_INTRO)، هیچ حرف مزاحمی نمایش نمی‌دهیم تا کودک فقط حروف کلمه را تطبیق دهد
             val distractorCount = when(item.level) {
                 1 -> 0 
                 2 -> 2
@@ -259,14 +255,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             }
 
             val currentItems = filteredItems.value
-            // انتخاب مزاحم‌ها فقط از حروفی که قبلاً تدریس شده‌اند و در همان دسته‌بندی هستند
             val learnedLetters = currentItems
-                .filter { it.id < item.id && it.category == item.category }
+                .filter { it.id < item.id }
                 .flatMap { it.word.map { c -> c.toString() } }
                 .toSet()
             
             val potentialDistractors = (learnedLetters - mandatory).toList()
-            
             val distractors = potentialDistractors.shuffled().take(distractorCount)
             _keyboardKeys.value = (mandatory.toList() + distractors).shuffled()
         }
@@ -274,33 +268,34 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     fun getParentNarrative(): String {
         val items = allItems.value
-        if (items.isEmpty()) return "هنوز ماجراجویی را شروع نکرده‌اید! بیایید اولین کلمه را با هم یاد بگیریم."
+        if (items.isEmpty()) return "هنوز ماجراجویی را شروع نکرده‌اید!"
         
         val masteredCount = items.count { it.isMastered }
         val totalCount = items.size
         val progressPercent = (masteredCount.toFloat() / totalCount * 100).toInt()
         
         return when {
-            progressPercent > 80 -> "فرزند شما در یادگیری عالی عمل کرده است! او تقریباً بر تمام کلمات مسلط شده و آماده چالش‌های بزرگتر است."
-            progressPercent > 50 -> "پیشرفت بسیار خوبی حاصل شده. تمرکز بر کلمات جدید و مرور مستمر به تثبیت یادگیری کمک می‌کند."
-            progressPercent > 20 -> "سفر یادگیری به خوبی در حال انجام است. تکرار و تمرین کلید موفقیت در این مرحله است."
-            else -> "در ابتدای راه هستیم. با تشویق و همراهی، فرزندتان به زودی کلمات بیشتری را یاد خواهد گرفت."
+            progressPercent > 80 -> "فرزند شما در یادگیری عالی عمل کرده است!"
+            progressPercent > 50 -> "پیشرفت بسیار خوبی حاصل شده."
+            progressPercent > 20 -> "سفر یادگیری به خوبی در حال انجام است."
+            else -> "در ابتدای راه هستیم."
         }
     }
 
     fun seedData() {
         viewModelScope.launch {
+            // توالی یادگیری تجمعی (Cumulative Phonics)
             val alphabetData = listOf(
-                LearningItem("a01", "آ", "آب", "آب", "img_a1", "ALPHABET"),
-                LearningItem("a02", "ب", "بابا", "بابا", "img_a2", "ALPHABET"),
-                LearningItem("a03", "د", "دست", "دست", "img_a3", "ALPHABET"),
-                LearningItem("a04", "م", "مادر", "مادر", "img_a4", "ALPHABET"),
-                LearningItem("a05", "س", "سبد", "سبد", "img_a5", "ALPHABET"),
-                LearningItem("a06", "ا", "انار", "انار", "img_a6", "ALPHABET"),
-                LearningItem("a07", "ر", "رنگ", "رنگ", "img_a7", "ALPHABET"),
+                LearningItem("a01", "آ", "آ", "آ", "img_a1", "ALPHABET"),
+                LearningItem("a02", "ب", "آب", "آب", "img_a2", "ALPHABET"),
+                LearningItem("a03", "د", "باد", "باد", "img_a3", "ALPHABET"),
+                LearningItem("a04", "م", "بام", "بام", "img_a4", "ALPHABET"),
+                LearningItem("a05", "ر", "بار", "بار", "img_a5", "ALPHABET"),
+                LearningItem("a06", "س", "سبد", "سبد", "img_a6", "ALPHABET"),
+                LearningItem("a07", "ا", "بابا", "بابا", "img_a7", "ALPHABET"),
                 LearningItem("a08", "ن", "نان", "نان", "img_a8", "ALPHABET"),
-                LearningItem("a09", "ز", "زنبور", "زنبور", "img_a9", "ALPHABET"),
-                LearningItem("a10", "ت", "تاب", "تاب", "img_a10", "ALPHABET"),
+                LearningItem("a09", "ز", "باز", "باز", "img_a9", "ALPHABET"),
+                LearningItem("a10", "ت", "دست", "دست", "img_a10", "ALPHABET"),
             )
 
             val orderedNumbers = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)

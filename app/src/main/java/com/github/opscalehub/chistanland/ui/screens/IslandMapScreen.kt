@@ -172,14 +172,16 @@ fun MapHeader(category: String, onOpenParentPanel: () -> Unit, onBack: () -> Uni
 @Composable
 fun SagaMap(items: List<LearningItem>, category: String, onStartSession: (LearningItem) -> Unit, onStartReview: (List<LearningItem>) -> Unit) {
     val firstLockedIndex = remember(items) {
-        val index = items.indexOfFirst { !it.isMastered }
+        // باز کردن جزیره جدید اگر قبلی حداقل یک بار با موفقیت تمرین شده باشد (Level > 1)
+        val index = items.indexOfFirst { it.level == 1 && it.experience == 0 }
         if (index == -1) items.size - 1 else index
     }
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = (firstLockedIndex - 1).coerceAtLeast(0))
 
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 120.dp, top = 20.dp)) {
         itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
-            val isLocked = index > 0 && !items[index - 1].isMastered
+            // منطق مترقی: جزیره زمانی قفل است که آیتم قبلی هنوز حتی یک بار هم دیده نشده باشد
+            val isLocked = index > 0 && items[index - 1].lastReviewTime == 0L
             val isEven = index % 2 == 0
 
             Column(horizontalAlignment = if (isEven) Alignment.Start else Alignment.End) {
