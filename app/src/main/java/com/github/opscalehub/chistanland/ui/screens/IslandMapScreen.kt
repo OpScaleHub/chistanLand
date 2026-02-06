@@ -171,12 +171,7 @@ fun MapHeader(category: String, onOpenParentPanel: () -> Unit, onBack: () -> Uni
 
 @Composable
 fun SagaMap(items: List<LearningItem>, category: String, onStartSession: (LearningItem) -> Unit, onStartReview: (List<LearningItem>) -> Unit) {
-    val firstLockedIndex = remember(items) {
-        // باز کردن جزیره جدید اگر قبلی حداقل یک بار با موفقیت تمرین شده باشد (Level > 1)
-        val index = items.indexOfFirst { it.level == 1 && it.experience == 0 }
-        if (index == -1) items.size - 1 else index
-    }
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = (firstLockedIndex - 1).coerceAtLeast(0))
+    val listState = rememberLazyListState()
 
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 120.dp, top = 20.dp)) {
         itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
@@ -189,8 +184,18 @@ fun SagaMap(items: List<LearningItem>, category: String, onStartSession: (Learni
                     if (index < items.size - 1) PathConnection(isEven, category)
                     IslandNode(item = item, isLocked = isLocked, modifier = Modifier.padding(horizontal = 40.dp), onClick = { onStartSession(item) })
                 }
+                
+                // شهربازی مرور بعد از هر ۳ جزیره
                 if (category == "ALPHABET" && (index + 1) % 3 == 0 && index < items.size - 1) {
-                    AmusementParkNode(isLocked = !item.isMastered, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), onClick = { onStartReview(items.take(index + 1)) })
+                    // منطق اصلاح شده: شهربازی زمانی باز می‌شود که تمام حروفِ قبل از آن حداقل یک بار دیده شده باشند
+                    val reviewItems = items.take(index + 1)
+                    val isReviewLocked = reviewItems.any { it.lastReviewTime == 0L }
+                    
+                    AmusementParkNode(
+                        isLocked = isReviewLocked, 
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), 
+                        onClick = { onStartReview(reviewItems) }
+                    )
                 }
             }
         }
@@ -327,12 +332,8 @@ fun getEmojiForItem(item: LearningItem): String {
         }
     }
     return when(item.word) {
-        "آب" -> "💧"; "بابا" -> "🧔"; "باد" -> "🌬️"; "بام" -> "🏠"; "سبد" -> "🧺"
-        "نان" -> "🍞"; "ابر" -> "☁️"; "دست" -> "🖐️"; "بوم" -> "🖼️"; "سیب" -> "🍎"
-        "باز" -> "🦅"; "آش" -> "🥣"; "کتاب" -> "📚"; "سگ" -> "🐕"; "برف" -> "❄️"
-        "شاخ" -> "🦌"; "قایق" -> "⛵"; "لباس" -> "👕"; "تاج" -> "👑"; "چای" -> "🍵"
-        "کوه" -> "⛰️"; "ژله" -> "🍮"; "صورت" -> "👤"; "ذرت" -> "🌽"; "عینک" -> "👓"
-        "ثروت" -> "💰"; "حلزون" -> "🐌"; "ضامن" -> "🛡️"; "طوطی" -> "🦜"; "غذا" -> "🍲"; "ظرف" -> "🍽️"
+        "آ" -> "🌟"; "آب" -> "💧"; "باد" -> "🌬️"; "بام" -> "🏠"; "بار" -> "🍎"
+        "سبد" -> "🧺"; "بابا" -> "🧔"; "نان" -> "🍞"; "باز" -> "🦅"; "دست" -> "🖐️"
         else -> "🌟"
     }
 }
