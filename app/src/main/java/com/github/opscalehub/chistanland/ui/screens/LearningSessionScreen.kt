@@ -148,7 +148,6 @@ fun LearningSessionScreen(
 
     val item = currentItem!!
     
-    // هماهنگی UI با منطق آموزشی
     val targetFullString = remember(item, activityType) { 
         if (item.category == "NUMBER") {
             item.character 
@@ -333,15 +332,20 @@ fun WordCard(item: com.github.opscalehub.chistanland.data.LearningItem, onPlaySo
                 val context = LocalContext.current
 
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
-                    val imageResId = remember(item.imageUrl) { try { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) } catch(e: Exception) { 0 } }
-                    if (imageResId != 0) {
-                        Image(
-                            painter = painterResource(id = imageResId),
-                            contentDescription = item.word,
-                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))
-                        )
-                    } else {
+                    // Logic fix: Prioritize specific emojis over placeholder drawables
+                    if (emoji != "🌟" && emoji != "🔢") {
                         Text(text = emoji, fontSize = 120.sp)
+                    } else {
+                        val imageResId = remember(item.imageUrl) { try { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) } catch(e: Exception) { 0 } }
+                        if (imageResId != 0) {
+                            Image(
+                                painter = painterResource(id = imageResId),
+                                contentDescription = item.word,
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))
+                            )
+                        } else {
+                            Text(text = emoji, fontSize = 120.sp)
+                        }
                     }
                 }
 
@@ -424,7 +428,7 @@ fun SuccessFestivalOverlay() {
 
 fun getEmojiForWord(word: String, category: String): String {
     return when(word) {
-        "آ" -> "🌟"; "آب" -> "💧"; "باد" -> "🌬️"; "بام" -> "🏠"; "بار" -> "⚖️" // Changed to a scale for 'load'
+        "آ" -> "🌟"; "آب" -> "💧"; "باد" -> "🌬️"; "بام" -> "🏠"; "بار" -> "⚖️" 
         "سبد" -> "🧺"; "بابا" -> "🧔"; "نان" -> "🍞"; "باز" -> "🦅"; "دست" -> "🖐️"
         else -> "🌟"
     }

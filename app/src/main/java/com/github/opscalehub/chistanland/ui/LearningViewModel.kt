@@ -124,6 +124,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         val item = _currentItem.value ?: return
         narrativeJob?.cancel()
         narrativeJob = viewModelScope.launch {
+            delay(300) // مکس کوتاه برای تمرکز بصری کودک
             _avatarState.value = "SPEAKING"
             val instruction = when (_activityType.value) {
                 ActivityType.PHONICS_INTRO -> "بیا با هم بنویسیم: «${item.word}»"
@@ -203,6 +204,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         
         if (_typedText.value.length == targetFullString.length) {
             completeLevel(!hasErrorInCurrentWord)
+        } else {
+            // برای هر حرف درست، یک تشویق بصری کوتاه
+            viewModelScope.launch {
+                delay(800)
+                if (_avatarState.value == "HAPPY") _avatarState.value = "IDLE"
+            }
         }
     }
 
@@ -211,7 +218,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _avatarState.value = "THINKING"
         viewModelScope.launch {
             _uiEvent.emit(UiEvent.Error)
-            delay(1200)
+            delay(1500) // فرصت برای تفکر کودک
             if (_avatarState.value == "THINKING") _avatarState.value = "IDLE"
         }
         audioManager.playSoundAsync("error_sound")
@@ -222,14 +229,22 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         narrativeJob = viewModelScope.launch {
             val item = _currentItem.value ?: return@launch
             repository.updateProgress(item, isCorrect)
+            
             if (isCorrect) {
                 _streak.value += 1
                 launch { _uiEvent.emit(UiEvent.Success) }
                 audioManager.playSound("success_fest")
-                delay(500)
-                ttsManager.speak("آفرین")
+                
+                delay(600) // مکس برای شروع جشنواره بصری
+                
+                val rewards = listOf("آفرین قهرمان!", "عالی بود عزیزم", "خیلی باهوشی!", "صد آفرین به تو", "ماشاالله، ادامه بده!")
+                ttsManager.speak(rewards.random())
+                
+                delay(2000) // زمان کافی برای لذت بردن از جشنواره موفقیت
+            } else {
+                delay(1000)
             }
-            delay(1500)
+            
             _avatarState.value = "IDLE"
             startNextInQueue()
         }
@@ -268,23 +283,22 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     fun getParentNarrative(): String {
         val items = allItems.value
-        if (items.isEmpty()) return "هنوز ماجراجویی را شروع نکرده‌اید!"
+        if (items.isEmpty()) return "فرزند شما آماده شروع یک ماجراجویی هیجان‌انگیز است!"
         
         val masteredCount = items.count { it.isMastered }
         val totalCount = items.size
         val progressPercent = (masteredCount.toFloat() / totalCount * 100).toInt()
         
         return when {
-            progressPercent > 80 -> "فرزند شما در یادگیری عالی عمل کرده است!"
-            progressPercent > 50 -> "پیشرفت بسیار خوبی حاصل شده."
-            progressPercent > 20 -> "سفر یادگیری به خوبی در حال انجام است."
-            else -> "در ابتدای راه هستیم."
+            progressPercent > 80 -> "تبریک! فرزند شما تقریباً بر تمام کلمات تدریس شده مسلط شده است."
+            progressPercent > 50 -> "پیشرفت بسیار عالی است. او با اشتیاق در حال کشف جزایر جدید دانایی است."
+            progressPercent > 20 -> "فرآیند یادگیری به خوبی تثبیت شده و اعتماد به نفس کودک در حال افزایش است."
+            else -> "در ابتدای مسیر هستیم. هر موفقیت کوچک او، گامی بزرگ در دنیای نشانه‌هاست."
         }
     }
 
     fun seedData() {
         viewModelScope.launch {
-            // توالی یادگیری تجمعی (Cumulative Phonics) - گسترش یافته
             val alphabetData = listOf(
                 LearningItem("a01", "آ", "آ", "آ", "img_a1", "ALPHABET"),
                 LearningItem("a02", "ب", "آب", "آب", "img_a2", "ALPHABET"),
