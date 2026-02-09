@@ -19,7 +19,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         AppDatabase.getDatabase(application).learningDao()
     )
     private val audioManager = AudioManager(application)
-    private val ttsManager = TtsManager(application)
+    val ttsManager = TtsManager(application) // Made public to be shared
     private var narrativeJob: Job? = null
 
     val allItems: StateFlow<List<LearningItem>> = repository.allItems
@@ -89,6 +89,11 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _selectedCategory.value = category
     }
 
+    fun stopAudio() {
+        narrativeJob?.cancel()
+        ttsManager.stop()
+    }
+
     fun startLearningSession(mainItem: LearningItem) {
         sessionQueue.clear()
         sessionQueue.add(mainItem)
@@ -124,7 +129,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         val item = _currentItem.value ?: return
         narrativeJob?.cancel()
         narrativeJob = viewModelScope.launch {
-            delay(300) // مکس کوتاه برای تمرکز بصری کودک
+            delay(300) 
             _avatarState.value = "SPEAKING"
             val instruction = when (_activityType.value) {
                 ActivityType.PHONICS_INTRO -> "بیا با هم بنویسیم: «${item.word}»"
@@ -205,7 +210,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         if (_typedText.value.length == targetFullString.length) {
             completeLevel(!hasErrorInCurrentWord)
         } else {
-            // برای هر حرف درست، یک تشویق بصری کوتاه
             viewModelScope.launch {
                 delay(800)
                 if (_avatarState.value == "HAPPY") _avatarState.value = "IDLE"
@@ -218,7 +222,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _avatarState.value = "THINKING"
         viewModelScope.launch {
             _uiEvent.emit(UiEvent.Error)
-            delay(1500) // فرصت برای تفکر کودک
+            delay(1500) 
             if (_avatarState.value == "THINKING") _avatarState.value = "IDLE"
         }
         audioManager.playSoundAsync("error_sound")
@@ -235,12 +239,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 launch { _uiEvent.emit(UiEvent.Success) }
                 audioManager.playSound("success_fest")
                 
-                delay(600) // مکس برای شروع جشنواره بصری
+                delay(600) 
                 
                 val rewards = listOf("آفرین قهرمان!", "عالی بود عزیزم", "خیلی باهوشی!", "صد آفرین به تو", "ماشاالله، ادامه بده!")
                 ttsManager.speak(rewards.random())
                 
-                delay(2000) // زمان کافی برای لذت بردن از جشنواره موفقیت
+                delay(2000)
             } else {
                 delay(1000)
             }

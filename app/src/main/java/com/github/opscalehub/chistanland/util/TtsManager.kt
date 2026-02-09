@@ -5,19 +5,16 @@ import android.content.Intent
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.*
 import kotlin.coroutines.resume
 
 /**
- * Manages Text-to-Speech functionality.
- * Optimized for Persian learning by providing Urdu fallback for phonics.
+ * Manages Text-to-Speech functionality with robust lifecycle handling.
  */
 class TtsManager(private val context: Context) {
     private var nativeTts: TextToSpeech? = null
@@ -25,17 +22,19 @@ class TtsManager(private val context: Context) {
     val isPersianAvailable: StateFlow<Boolean> = _isPersianAvailable.asStateFlow()
     
     private var _isUrduAvailable = false
-    private var isEnglishNativeReady = false
     private val TAG = "TtsManager"
     private val PERSIAN_LOCALE = Locale("fa", "IR")
     private val URDU_LOCALE = Locale("ur", "PK")
+    
+    private val initDeferred = CompletableDeferred<Boolean>()
+    private var isReleased = false
 
     init {
         initNativeTts()
     }
 
     private fun initNativeTts() {
-        nativeTts = TextToSpeech(context) { status ->
+        nativeTts = TextToSpeech(context.applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 val faResult = nativeTts?.isLanguageAvailable(PERSIAN_LOCALE)
                 _isPersianAvailable.value = faResult != null && faResult >= TextToSpeech.LANG_AVAILABLE
@@ -43,14 +42,13 @@ class TtsManager(private val context: Context) {
                 val urResult = nativeTts?.isLanguageAvailable(URDU_LOCALE)
                 _isUrduAvailable = urResult != null && urResult >= TextToSpeech.LANG_AVAILABLE
 
-                val enResult = nativeTts?.isLanguageAvailable(Locale.US)
-                isEnglishNativeReady = enResult != null && enResult >= TextToSpeech.LANG_AVAILABLE
-                
-                Log.i(TAG, "Native TTS Ready -> Persian: ${_isPersianAvailable.value}, Urdu: $_isUrduAvailable")
+                Log.i(TAG, "TTS Ready -> Persian: ${_isPersianAvailable.value}, Urdu: $_isUrduAvailable")
                 
                 setupProgressListener()
+                initDeferred.complete(true)
             } else {
-                Log.e(TAG, "Native TTS initialization failed")
+                Log.e(TAG, "TTS Init failed: $status")
+                initDeferred.complete(false)
             }
         }
     }
@@ -59,17 +57,9 @@ class TtsManager(private val context: Context) {
 
     private fun setupProgressListener() {
         nativeTts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {
-                Log.d(TAG, "Native Speech Started: $utteranceId")
-            }
-            override fun onDone(utteranceId: String?) {
-                Log.d(TAG, "Native Speech Done: $utteranceId")
-                resumeContinuation()
-            }
-            override fun onError(utteranceId: String?) {
-                Log.e(TAG, "Native Speech Error: $utteranceId")
-                resumeContinuation()
-            }
+            override fun onStart(utteranceId: String?) {}
+            override fun onDone(utteranceId: String?) { resumeContinuation() }
+            override fun onError(utteranceId: String?) { resumeContinuation() }
         })
     }
 
@@ -81,16 +71,16 @@ class TtsManager(private val context: Context) {
     }
 
     suspend fun speak(text: String, locale: Locale = PERSIAN_LOCALE) {
-        Log.d(TAG, "Speaking: '$text' (${locale.language})")
-        
+        if (isReleased) return
+
+        val isReady = try { initDeferred.await() } catch (e: Exception) { false }
+        if (!isReady || nativeTts == null) return
+
         if (locale.language == "fa") {
             when {
                 _isPersianAvailable.value -> speakNative(text, PERSIAN_LOCALE)
-                _isUrduAvailable -> {
-                    Log.i(TAG, "Persian TTS missing, falling back to Urdu for compatible phonics.")
-                    speakNative(text, URDU_LOCALE)
-                }
-                else -> Log.w(TAG, "Neither Persian nor Urdu TTS available.")
+                _isUrduAvailable -> speakNative(text, URDU_LOCALE)
+                else -> Log.w(TAG, "No TTS engine available for Persian/Urdu")
             }
         } else {
             speakNative(text, locale)
@@ -98,38 +88,56 @@ class TtsManager(private val context: Context) {
     }
 
     private suspend fun speakNative(text: String, locale: Locale) = suspendCancellableCoroutine<Unit> { continuation ->
+        if (isReleased) {
+            continuation.resume(Unit)
+            return@suspendCancellableCoroutine
+        }
         currentContinuation = continuation
-        nativeTts?.language = locale
-        val id = UUID.randomUUID().toString()
-        val result = nativeTts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
         
-        if (result != TextToSpeech.SUCCESS) {
-            Log.e(TAG, "Native speak failed to queue")
+        try {
+            nativeTts?.language = locale
+            val id = UUID.randomUUID().toString()
+            nativeTts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
+        } catch (e: Exception) {
             resumeContinuation()
         }
         
         continuation.invokeOnCancellation {
-            nativeTts?.stop()
-            currentContinuation = null
+            stop()
         }
+    }
+
+    fun stop() {
+        try {
+            nativeTts?.stop()
+            currentContinuation?.let {
+                if (it.isActive) it.resume(Unit)
+                currentContinuation = null
+            }
+        } catch (e: Exception) {}
     }
 
     fun openTtsSettings() {
         try {
-            val intent = Intent("com.android.settings.TTS_SETTINGS")
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            val intent = Intent("com.android.settings.TTS_SETTINGS").apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
             context.startActivity(intent)
         } catch (e: Exception) {
-            Log.e(TAG, "Could not open TTS settings", e)
             try {
-                val intent = Intent(android.provider.Settings.ACTION_SETTINGS)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(intent)
+                context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                })
             } catch (e2: Exception) {}
         }
     }
 
     fun release() {
-        nativeTts?.shutdown()
+        isReleased = true
+        stop()
+        try {
+            nativeTts?.shutdown()
+            nativeTts = null
+        } catch (e: Exception) {}
     }
 }

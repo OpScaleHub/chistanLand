@@ -28,6 +28,8 @@ import com.github.opscalehub.chistanland.ui.theme.ChistanLandTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
+    private var sharedViewModel: LearningViewModel? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -42,12 +44,19 @@ class MainActivity : ComponentActivity() {
                             color = MaterialTheme.colorScheme.background
                         ) {
                             val viewModel: LearningViewModel = viewModel()
+                            sharedViewModel = viewModel
                             ChistanApp(viewModel)
                         }
                     }
                 }
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Stop any pending or playing audio when app goes to background
+        sharedViewModel?.stopAudio()
     }
 }
 
