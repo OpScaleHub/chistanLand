@@ -19,7 +19,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         AppDatabase.getDatabase(application).learningDao()
     )
     private val audioManager = AudioManager(application)
-    val ttsManager = TtsManager(application) // Made public to be shared
+    val ttsManager = TtsManager(application)
     private var narrativeJob: Job? = null
 
     val allItems: StateFlow<List<LearningItem>> = repository.allItems
@@ -97,13 +97,11 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     fun startLearningSession(mainItem: LearningItem) {
         sessionQueue.clear()
         sessionQueue.add(mainItem)
-        
         val extraItems = filteredItems.value
             .filter { it.id < mainItem.id && it.lastReviewTime > 0 }
             .shuffled()
             .take(2)
         sessionQueue.addAll(extraItems)
-        
         startNextInQueue()
     }
 
@@ -131,12 +129,13 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         narrativeJob = viewModelScope.launch {
             delay(300) 
             _avatarState.value = "SPEAKING"
+            // Use Short Vowels (اعراب) and Punctuation for better Persian TTS
             val instruction = when (_activityType.value) {
-                ActivityType.PHONICS_INTRO -> "بیا با هم بنویسیم: «${item.word}»"
-                ActivityType.MISSING_LETTER -> "توی کلمه «${item.word}» کدوم نشانه گم شده؟"
-                ActivityType.SPELLING -> "حالا خودت بنویس: «${item.word}»"
-                ActivityType.WORD_RECOGNITION -> "تصویر «${item.word}» کجاست؟"
-                ActivityType.QUICK_RECALL -> "زود بنویس: «${item.word}»"
+                ActivityType.PHONICS_INTRO -> "بیا با هم بِنِویسیم: «${item.word}»..."
+                ActivityType.MISSING_LETTER -> "توی کلمه ${item.word}، کدوم نِشانه گُم شده؟"
+                ActivityType.SPELLING -> "حالا خودت بِنِویس: «${item.word}»"
+                ActivityType.WORD_RECOGNITION -> "تَصویرِ ${item.word} کُجاست؟"
+                ActivityType.QUICK_RECALL -> "زود بِنِویس: «${item.word}»"
             }
             ttsManager.speak(instruction)
             _avatarState.value = "IDLE"
@@ -149,15 +148,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _typedText.value = ""
         _charStatus.value = emptyList()
         hasErrorInCurrentWord = false
-        
         _activityType.value = decideActivityType(item, isReview)
-
         if (_activityType.value == ActivityType.MISSING_LETTER) {
             _missingCharIndex.value = Random.nextInt(item.word.length)
         } else {
             _missingCharIndex.value = -1
         }
-
         generateAdaptiveKeyboard(item)
         playHintInstruction()
     }
@@ -176,7 +172,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     fun onCharTyped(char: String) {
         val current = _currentItem.value ?: return
         val targetFullString = if (current.category == "NUMBER") current.character else current.word
-        
         when (_activityType.value) {
             ActivityType.MISSING_LETTER -> {
                 val targetChar = targetFullString[_missingCharIndex.value].toString()
@@ -191,7 +186,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             else -> {
                 if (_typedText.value.length >= targetFullString.length) return
                 val targetChar = targetFullString[_typedText.value.length].toString()
-
                 if (char == targetChar) {
                     processCorrectChar(char, targetFullString)
                 } else {
@@ -206,7 +200,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _charStatus.value = _charStatus.value + true
         _avatarState.value = "HAPPY"
         audioManager.playSoundAsync("pop_sound")
-        
         if (_typedText.value.length == targetFullString.length) {
             completeLevel(!hasErrorInCurrentWord)
         } else {
@@ -233,22 +226,17 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         narrativeJob = viewModelScope.launch {
             val item = _currentItem.value ?: return@launch
             repository.updateProgress(item, isCorrect)
-            
             if (isCorrect) {
                 _streak.value += 1
                 launch { _uiEvent.emit(UiEvent.Success) }
                 audioManager.playSound("success_fest")
-                
                 delay(600) 
-                
-                val rewards = listOf("آفرین قهرمان!", "عالی بود عزیزم", "خیلی باهوشی!", "صد آفرین به تو", "ماشاالله، ادامه بده!")
+                val rewards = listOf("آفرین قَهرمان!", "عالی بود عَزیزم", "خیلی باهوشی!", "صد آفرین به تو", "ماشاالله، ادامه بِدِه!")
                 ttsManager.speak(rewards.random())
-                
-                delay(2000)
+                delay(2000) 
             } else {
                 delay(1000)
             }
-            
             _avatarState.value = "IDLE"
             startNextInQueue()
         }
@@ -260,44 +248,24 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         } else {
             val wordChars = item.word.map { it.toString() }.toSet()
             val mandatory = wordChars.toMutableSet()
-            
             val distractorCount = when(item.level) {
                 1 -> 0 
                 2 -> 2
                 3 -> 4
                 else -> 6
             }
-
             if (distractorCount == 0) {
                 _keyboardKeys.value = mandatory.toList().shuffled()
                 return
             }
-
             val currentItems = filteredItems.value
             val learnedLetters = currentItems
                 .filter { it.id < item.id }
                 .flatMap { it.word.map { c -> c.toString() } }
                 .toSet()
-            
             val potentialDistractors = (learnedLetters - mandatory).toList()
             val distractors = potentialDistractors.shuffled().take(distractorCount)
             _keyboardKeys.value = (mandatory.toList() + distractors).shuffled()
-        }
-    }
-
-    fun getParentNarrative(): String {
-        val items = allItems.value
-        if (items.isEmpty()) return "فرزند شما آماده شروع یک ماجراجویی هیجان‌انگیز است!"
-        
-        val masteredCount = items.count { it.isMastered }
-        val totalCount = items.size
-        val progressPercent = (masteredCount.toFloat() / totalCount * 100).toInt()
-        
-        return when {
-            progressPercent > 80 -> "تبریک! فرزند شما تقریباً بر تمام کلمات تدریس شده مسلط شده است."
-            progressPercent > 50 -> "پیشرفت بسیار عالی است. او با اشتیاق در حال کشف جزایر جدید دانایی است."
-            progressPercent > 20 -> "فرآیند یادگیری به خوبی تثبیت شده و اعتماد به نفس کودک در حال افزایش است."
-            else -> "در ابتدای مسیر هستیم. هر موفقیت کوچک او، گامی بزرگ در دنیای نشانه‌هاست."
         }
     }
 
@@ -320,15 +288,29 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 LearningItem("a14", "ک", "کتاب", "کتاب", "img_a14", "ALPHABET"),
                 LearningItem("a15", "گ", "سگ", "سگ", "img_a15", "ALPHABET"),
             )
-
             val orderedNumbers = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
             val numberItems = orderedNumbers.mapIndexed { index, num ->
                 val word = num.toPersianWord()
                 val idSuffix = if (num == 0) "10" else String.format("%02d", num)
                 LearningItem("n$idSuffix", num.toString().toPersianDigit(), word, word, "img_n$num", "NUMBER")
             }
-
             repository.insertInitialData(alphabetData + numberItems)
+        }
+    }
+
+    fun getParentNarrative(): String {
+        val items = allItems.value
+        if (items.isEmpty()) return "هنوز داده‌ای برای تحلیل وجود ندارد. با کودک خود تمرین را شروع کنید!"
+        
+        val masteredCount = items.count { it.isMastered }
+        val totalCount = items.size
+        val progressPercent = (masteredCount.toFloat() / totalCount * 100).toInt()
+        
+        return when {
+            progressPercent == 0 -> "کودک شما در ابتدای مسیر یادگیری است. او در حال آشنایی با اولین نشانه‌هاست."
+            progressPercent < 30 -> "شروع خوبی است! $masteredCount نشانه به خوبی یاد گرفته شده. تکرار و تمرین بیشتر به تثبیت یادگیری کمک می‌کند."
+            progressPercent < 70 -> "پیشرفت عالی است! کودک شما بر بیش از نیمی از نشانه‌ها مسلط شده است."
+            else -> "فوق‌العاده است! تقریباً تمام نشانه‌ها در حافظه بلندمدت کودک تثبیت شده‌اند."
         }
     }
 

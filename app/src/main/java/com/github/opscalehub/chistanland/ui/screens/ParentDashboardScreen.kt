@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.sp
 import com.github.opscalehub.chistanland.data.LearningItem
 import com.github.opscalehub.chistanland.ui.LearningViewModel
 import com.github.opscalehub.chistanland.ui.theme.*
-import com.github.opscalehub.chistanland.util.TtsManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,8 +38,6 @@ fun ParentDashboardScreen(
     val items by viewModel.allItems.collectAsState()
     val narrative = viewModel.getParentNarrative()
     var showRawData by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val ttsManager = remember { TtsManager(context) }
 
     Scaffold(
         topBar = {
@@ -87,7 +84,7 @@ fun ParentDashboardScreen(
             ) {
                 // TTS Settings Card
                 item {
-                    TtsSettingsCard(onClick = { ttsManager.openTtsSettings() })
+                    TtsSettingsCard(onClick = { viewModel.ttsManager.openTtsSettings() })
                 }
 
                 // Summary Stats
@@ -104,7 +101,6 @@ fun ParentDashboardScreen(
                             color = DeepOcean,
                             modifier = Modifier.weight(1f)
                         )
-                        // اضافه کردن آواتار کوچک به پنل والدین
                         LearningAvatar(state = "HAPPY", modifier = Modifier.size(48.dp))
                     }
                 }

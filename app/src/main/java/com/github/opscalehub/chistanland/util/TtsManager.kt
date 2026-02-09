@@ -42,6 +42,10 @@ class TtsManager(private val context: Context) {
                 val urResult = nativeTts?.isLanguageAvailable(URDU_LOCALE)
                 _isUrduAvailable = urResult != null && urResult >= TextToSpeech.LANG_AVAILABLE
 
+                // Optimized for kids: Slightly higher pitch and slightly slower rate
+                nativeTts?.setPitch(1.1f) 
+                nativeTts?.setSpeechRate(0.85f) 
+
                 Log.i(TAG, "TTS Ready -> Persian: ${_isPersianAvailable.value}, Urdu: $_isUrduAvailable")
                 
                 setupProgressListener()
