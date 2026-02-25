@@ -3,15 +3,18 @@ package com.github.opscalehub.chistanland.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.opscalehub.chistanland.BuildConfig
 import com.github.opscalehub.chistanland.data.AppDatabase
 import com.github.opscalehub.chistanland.data.LearningItem
 import com.github.opscalehub.chistanland.data.LearningRepository
 import com.github.opscalehub.chistanland.util.AudioManager
 import com.github.opscalehub.chistanland.util.TtsManager
+import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import kotlin.random.Random
 
 class LearningViewModel(application: Application) : AndroidViewModel(application) {
@@ -22,15 +25,19 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     val ttsManager = TtsManager(application)
     private var narrativeJob: Job? = null
 
+    private val generativeModel = GenerativeModel(
+        modelName = "gemini-1.5-flash",
+        apiKey = BuildConfig.GEMINI_API_KEY
+    )
+
     val allItems: StateFlow<List<LearningItem>> = repository.allItems
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _selectedCategory = MutableStateFlow<String?>(null)
+    private val _selectedCategory = MutableStateFlow<String?>("ALPHABET")
     val selectedCategory: StateFlow<String?> = _selectedCategory.asStateFlow()
 
-    val filteredItems = combine(allItems, _selectedCategory) { items, category ->
-        if (category == null) emptyList()
-        else items.filter { it.category == category }
+    val filteredItems = allItems.map { items ->
+        items.filter { it.category == "ALPHABET" }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _currentItem = MutableStateFlow<LearningItem?>(null)
@@ -65,6 +72,9 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val _isReviewMode = MutableStateFlow(false)
     val isReviewMode: StateFlow<Boolean> = _isReviewMode.asStateFlow()
 
+    private val _isGenerating = MutableStateFlow(false)
+    val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
+
     private val sessionQueue = mutableListOf<LearningItem>()
 
     enum class ActivityType { 
@@ -72,7 +82,9 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         MISSING_LETTER,     
         SPELLING,           
         WORD_RECOGNITION,   
-        QUICK_RECALL        
+        QUICK_RECALL,
+        STORY_TELLING,
+        TRACE_LETTER // New activity type for kids
     }
 
     sealed class UiEvent {
@@ -82,8 +94,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         object StartReviewSession : UiEvent()
         object SessionComplete : UiEvent()
     }
-
-    private val persianDigits = listOf("۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹", "۰")
 
     fun selectCategory(category: String?) {
         _selectedCategory.value = category
@@ -97,8 +107,8 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     fun startLearningSession(mainItem: LearningItem) {
         sessionQueue.clear()
         sessionQueue.add(mainItem)
-        val extraItems = filteredItems.value
-            .filter { it.id < mainItem.id && it.lastReviewTime > 0 }
+        val extraItems = allItems.value
+            .filter { it.id != mainItem.id && it.isMastered }
             .shuffled()
             .take(2)
         sessionQueue.addAll(extraItems)
@@ -129,16 +139,42 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         narrativeJob = viewModelScope.launch {
             delay(300) 
             _avatarState.value = "SPEAKING"
-            // Use Short Vowels (اعراب) and Punctuation for better Persian TTS
-            val instruction = when (_activityType.value) {
-                ActivityType.PHONICS_INTRO -> "بیا با هم بِنِویسیم: «${item.word}»..."
-                ActivityType.MISSING_LETTER -> "توی کلمه ${item.word}، کدوم نِشانه گُم شده؟"
-                ActivityType.SPELLING -> "حالا خودت بِنِویس: «${item.word}»"
-                ActivityType.WORD_RECOGNITION -> "تَصویرِ ${item.word} کُجاست؟"
-                ActivityType.QUICK_RECALL -> "زود بِنِویس: «${item.word}»"
+            
+            if (_activityType.value == ActivityType.STORY_TELLING) {
+                generateAndPlayStory(item)
+            } else {
+                val instruction = when (_activityType.value) {
+                    ActivityType.PHONICS_INTRO -> "بیا با هم بِنِویسیم: «${item.word}»..."
+                    ActivityType.MISSING_LETTER -> "توی کلمه ${item.word}، کدوم نِشانه گُم شده؟"
+                    ActivityType.SPELLING -> "حالا خودت بِنِویس: «${item.word}»"
+                    ActivityType.WORD_RECOGNITION -> "تَصویرِ ${item.word} کُجاست؟"
+                    ActivityType.QUICK_RECALL -> "زود بِنِویس: «${item.word}»"
+                    ActivityType.TRACE_LETTER -> "بیا نِشانه «${item.character}» رو نَقاشی کنیم!"
+                    else -> ""
+                }
+                ttsManager.speak(instruction)
             }
-            ttsManager.speak(instruction)
             _avatarState.value = "IDLE"
+        }
+    }
+
+    private suspend fun generateAndPlayStory(item: LearningItem) {
+        _isGenerating.value = true
+        try {
+            val prompt = """
+                یک داستان بسیار کوتاه، شاد و کودکانه (حداکثر ۲ جمله) برای یک کودک ۴ ساله درباره کلمه «${item.word}» بگو.
+                داستان باید با این کلمه شروع شود و حس کنجکاوی کودک را برانگیزد.
+                فقط متن داستان را برگردان.
+            """.trimIndent()
+            
+            val response = generativeModel.generateContent(prompt)
+            val story = response.text ?: "یه روز یه ${item.word} مهربون داشتیم که خیلی خوشحال بود!"
+            ttsManager.speak(story)
+            delay(5000) // Give some time for the story to finish
+        } catch (e: Exception) {
+            ttsManager.speak("بیا با هم درباره ${item.word} یاد بگیریم!")
+        } finally {
+            _isGenerating.value = false
         }
     }
 
@@ -149,29 +185,42 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         _charStatus.value = emptyList()
         hasErrorInCurrentWord = false
         _activityType.value = decideActivityType(item, isReview)
+        
         if (_activityType.value == ActivityType.MISSING_LETTER) {
             _missingCharIndex.value = Random.nextInt(item.word.length)
         } else {
             _missingCharIndex.value = -1
         }
+        
         generateAdaptiveKeyboard(item)
         playHintInstruction()
     }
 
     private fun decideActivityType(item: LearningItem, isReview: Boolean): ActivityType {
-        if (isReview) return ActivityType.QUICK_RECALL
+        if (isReview) {
+            return listOf(ActivityType.QUICK_RECALL, ActivityType.WORD_RECOGNITION).random()
+        }
+        
+        // Multi-path learning based on level and randomness for kids' engagement
         return when (item.level) {
             1 -> ActivityType.PHONICS_INTRO
-            2 -> ActivityType.MISSING_LETTER
-            3 -> ActivityType.SPELLING
-            4 -> if (Random.nextBoolean()) ActivityType.WORD_RECOGNITION else ActivityType.SPELLING
-            else -> ActivityType.QUICK_RECALL
+            2 -> listOf(ActivityType.TRACE_LETTER, ActivityType.MISSING_LETTER).random()
+            3 -> listOf(ActivityType.SPELLING, ActivityType.MISSING_LETTER).random()
+            4 -> listOf(ActivityType.WORD_RECOGNITION, ActivityType.STORY_TELLING).random()
+            else -> ActivityType.STORY_TELLING
         }
     }
 
     fun onCharTyped(char: String) {
         val current = _currentItem.value ?: return
-        val targetFullString = if (current.category == "NUMBER") current.character else current.word
+        val targetFullString = current.word
+        
+        if (_activityType.value == ActivityType.STORY_TELLING || _activityType.value == ActivityType.TRACE_LETTER) {
+            // Simplify for these modes to allow exploration
+            completeLevel(true)
+            return
+        }
+
         when (_activityType.value) {
             ActivityType.MISSING_LETTER -> {
                 val targetChar = targetFullString[_missingCharIndex.value].toString()
@@ -243,79 +292,65 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun generateAdaptiveKeyboard(item: LearningItem) {
-        if (item.category == "NUMBER") {
-            _keyboardKeys.value = persianDigits
-        } else {
-            val wordChars = item.word.map { it.toString() }.toSet()
-            val mandatory = wordChars.toMutableSet()
-            val distractorCount = when(item.level) {
-                1 -> 0 
-                2 -> 2
-                3 -> 4
-                else -> 6
-            }
-            if (distractorCount == 0) {
-                _keyboardKeys.value = mandatory.toList().shuffled()
-                return
-            }
-            val currentItems = filteredItems.value
-            val learnedLetters = currentItems
-                .filter { it.id < item.id }
-                .flatMap { it.word.map { c -> c.toString() } }
-                .toSet()
-            val potentialDistractors = (learnedLetters - mandatory).toList()
-            val distractors = potentialDistractors.shuffled().take(distractorCount)
-            _keyboardKeys.value = (mandatory.toList() + distractors).shuffled()
+        val wordChars = item.word.map { it.toString() }.toSet()
+        val mandatory = wordChars.toMutableSet()
+        val distractorCount = when(item.level) {
+            1 -> 0 
+            2 -> 2
+            3 -> 3
+            else -> 4
         }
+        if (distractorCount == 0) {
+            _keyboardKeys.value = mandatory.toList().shuffled()
+            return
+        }
+        val currentItems = allItems.value
+        val learnedLetters = currentItems
+            .filter { it.isMastered }
+            .flatMap { it.word.map { c -> c.toString() } }
+            .toSet()
+        val potentialDistractors = (learnedLetters - mandatory).toList()
+        val distractors = if (potentialDistractors.size >= distractorCount) {
+            potentialDistractors.shuffled().take(distractorCount)
+        } else {
+            // Fallback distractors if not enough learned letters
+            listOf("ا", "ب", "پ", "ت", "ث", "ج", "چ", "ح", "خ").filter { it !in mandatory }.shuffled().take(distractorCount)
+        }
+        _keyboardKeys.value = (mandatory.toList() + distractors).shuffled()
     }
 
     fun seedData() {
         viewModelScope.launch {
             val alphabetData = listOf(
-                LearningItem("a01", "آ", "آ", "آ", "img_a1", "ALPHABET"),
-                LearningItem("a02", "ب", "آب", "آب", "img_a2", "ALPHABET"),
-                LearningItem("a03", "د", "باد", "باد", "img_a3", "ALPHABET"),
-                LearningItem("a04", "م", "بام", "بام", "img_a4", "ALPHABET"),
-                LearningItem("a05", "ر", "بار", "بار", "img_a5", "ALPHABET"),
-                LearningItem("a06", "س", "سبد", "سبد", "img_a6", "ALPHABET"),
-                LearningItem("a07", "ا", "بابا", "بابا", "img_a7", "ALPHABET"),
+                LearningItem("a01", "آ", "آب", "آب", "img_a1", "ALPHABET"),
+                LearningItem("a02", "ب", "بابا", "بابا", "img_a2", "ALPHABET"),
+                LearningItem("a03", "د", "درخت", "درخت", "img_a3", "ALPHABET"),
+                LearningItem("a04", "م", "مادر", "مادر", "img_a4", "ALPHABET"),
+                LearningItem("a05", "ر", "روباه", "روباه", "img_a5", "ALPHABET"),
+                LearningItem("a06", "س", "ستاره", "ستاره", "img_a6", "ALPHABET"),
+                LearningItem("a07", "ت", "توت", "توت", "img_a7", "ALPHABET"),
                 LearningItem("a08", "ن", "نان", "نان", "img_a8", "ALPHABET"),
-                LearningItem("a09", "ز", "باز", "باز", "img_a9", "ALPHABET"),
-                LearningItem("a10", "ت", "دست", "دست", "img_a10", "ALPHABET"),
-                LearningItem("a11", "ر", "تار", "تار", "img_a11", "ALPHABET"),
-                LearningItem("a12", "و", "توت", "توت", "img_a12", "ALPHABET"),
-                LearningItem("a13", "ی", "تیر", "تیر", "img_a13", "ALPHABET"),
-                LearningItem("a14", "ک", "کتاب", "کتاب", "img_a14", "ALPHABET"),
-                LearningItem("a15", "گ", "سگ", "سگ", "img_a15", "ALPHABET"),
+                LearningItem("a09", "ز", "زرافه", "زرافه", "img_a9", "ALPHABET"),
             )
-            val orderedNumbers = listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
-            val numberItems = orderedNumbers.mapIndexed { index, num ->
-                val word = num.toPersianWord()
-                val idSuffix = if (num == 0) "10" else String.format("%02d", num)
-                LearningItem("n$idSuffix", num.toString().toPersianDigit(), word, word, "img_n$num", "NUMBER")
-            }
-            repository.insertInitialData(alphabetData + numberItems)
+            repository.insertInitialData(alphabetData)
         }
     }
 
     fun getParentNarrative(): String {
         val items = allItems.value
-        if (items.isEmpty()) return "هنوز داده‌ای برای تحلیل وجود ندارد. با کودک خود تمرین را شروع کنید!"
+        if (items.isEmpty()) return "هنوز داده‌ای برای تحلیل وجود ندارد."
         
         val masteredCount = items.count { it.isMastered }
         val totalCount = items.size
-        val progressPercent = (masteredCount.toFloat() / totalCount * 100).toInt()
+        val progressPercent = if (totalCount > 0) (masteredCount.toFloat() / totalCount * 100).toInt() else 0
         
         return when {
-            progressPercent == 0 -> "کودک شما در ابتدای مسیر یادگیری است. او در حال آشنایی با اولین نشانه‌هاست."
-            progressPercent < 30 -> "شروع خوبی است! $masteredCount نشانه به خوبی یاد گرفته شده. تکرار و تمرین بیشتر به تثبیت یادگیری کمک می‌کند."
-            progressPercent < 70 -> "پیشرفت عالی است! کودک شما بر بیش از نیمی از نشانه‌ها مسلط شده است."
-            else -> "فوق‌العاده است! تقریباً تمام نشانه‌ها در حافظه بلندمدت کودک تثبیت شده‌اند."
+            progressPercent == 0 -> "کودک شما در حال آشنایی با اولین نشانه‌هاست."
+            progressPercent < 30 -> "$masteredCount نشانه به خوبی یاد گرفته شده."
+            progressPercent < 70 -> "کودک شما بر بیش از نیمی از نشانه‌ها مسلط شده است."
+            else -> "تقریباً تمام نشانه‌ها تثبیت شده‌اند."
         }
     }
-
-    private fun String.toPersianDigit() = this.replace('0','۰').replace('1','۱').replace('2','۲').replace('3','۳').replace('4','۴').replace('5','۵').replace('6','۶').replace('7','۷').replace('8','۸').replace('9','۹')
-    private fun Int.toPersianWord() = listOf("صفر","یک","دو","سه","چهار","پنج","شش","هفت","هشت","نه")[this]
 
     override fun onCleared() {
         super.onCleared()

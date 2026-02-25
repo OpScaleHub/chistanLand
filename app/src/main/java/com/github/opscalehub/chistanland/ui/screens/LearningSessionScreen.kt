@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -37,6 +38,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
@@ -61,6 +63,7 @@ fun LearningSessionScreen(
     val avatarState by viewModel.avatarState.collectAsState()
     val activityType by viewModel.activityType.collectAsState()
     val missingCharIndex by viewModel.missingCharIndex.collectAsState()
+    val isGenerating by viewModel.isGenerating.collectAsState()
     
     val view = LocalView.current
     val scrollState = rememberScrollState()
@@ -147,14 +150,7 @@ fun LearningSessionScreen(
     }
 
     val item = currentItem!!
-    
-    val targetFullString = remember(item, activityType) { 
-        if (item.category == "NUMBER") {
-            item.character 
-        } else {
-            item.word
-        }
-    }
+    val targetFullString = item.word
     
     val targetChar by remember(typedText, targetFullString, activityType, missingCharIndex) {
         derivedStateOf { 
@@ -169,10 +165,7 @@ fun LearningSessionScreen(
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Box(modifier = Modifier.fillMaxSize().background(
             brush = Brush.verticalGradient(
-                colors = listOf(
-                    if (item.category == "NUMBER") MangoOrange.copy(alpha = 0.1f) else SkyBlue.copy(alpha = 0.2f),
-                    Color.White
-                )
+                colors = listOf(SkyBlue.copy(alpha = 0.2f), Color.White)
             )
         )) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -192,66 +185,103 @@ fun LearningSessionScreen(
                     StreakIndicator(streak = streak)
                 }
 
-                // Content
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
-                        ChickStatus(streak = streak)
-                        PlantProgress(level = item.level)
+                // Content Area with Animation Transition
+                Box(modifier = Modifier.weight(1f)) {
+                    AnimatedContent(
+                        targetState = activityType,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = tween(600)) + scaleIn(initialScale = 0.92f, animationSpec = tween(600)))
+                                .togetherWith(fadeOut(animationSpec = tween(400)) + scaleOut(targetScale = 1.08f, animationSpec = tween(400)))
+                        },
+                        label = "ActivityTransition"
+                    ) { targetType ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(scrollState)
+                                .padding(horizontal = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
+                                ChickStatus(streak = streak)
+                                PlantProgress(level = item.level)
+                            }
+
+                            when (targetType) {
+                                LearningViewModel.ActivityType.STORY_TELLING -> {
+                                    StoryModeUI(item = item, isGenerating = isGenerating)
+                                }
+                                LearningViewModel.ActivityType.TRACE_LETTER -> {
+                                    TracingModeUI(item = item, onComplete = { viewModel.onCharTyped(item.character) })
+                                }
+                                else -> {
+                                    WordCard(
+                                        item = item,
+                                        onPlaySound = { if (!isTransitioning) viewModel.startLearning(item) },
+                                        modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(40.dp))
+                                    
+                                    WordDisplay(
+                                        targetWord = targetFullString,
+                                        typedText = typedText,
+                                        charStatus = charStatus,
+                                        activityType = targetType,
+                                        missingCharIndex = missingCharIndex,
+                                        onPositioned = { pos, size -> dropTargetPosition = pos; dropTargetSize = size },
+                                        modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
+                                    )
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(32.dp))
+                        }
                     }
-
-                    if (item.category == "NUMBER") {
-                        SessionQuantityIndicator(item.character)
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-
-                    WordCard(
-                        item = item,
-                        onPlaySound = { if (!isTransitioning) viewModel.startLearning(item) },
-                        modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
-                    )
-
-                    Spacer(modifier = Modifier.height(40.dp))
-                    
-                    WordDisplay(
-                        targetWord = targetFullString,
-                        typedText = typedText,
-                        charStatus = charStatus,
-                        activityType = activityType,
-                        missingCharIndex = missingCharIndex,
-                        onPositioned = { pos, size -> dropTargetPosition = pos; dropTargetSize = size },
-                        modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
-                    )
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
                 }
 
-                // Keyboard
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.9f))))
-                        .padding(bottom = 32.dp, top = 8.dp),
-                    contentAlignment = Alignment.Center
+                // Keyboard Section
+                AnimatedVisibility(
+                    visible = activityType != LearningViewModel.ActivityType.STORY_TELLING && activityType != LearningViewModel.ActivityType.TRACE_LETTER,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
-                    KidKeyboard(
-                        keys = keyboardKeys,
-                        onKeyClick = { if (!isTransitioning) viewModel.onCharTyped(it) },
-                        targetChar = targetChar,
-                        showHint = showHint && !hintBlocked && !isTransitioning,
-                        keySize = safeKeySize,
-                        isDragEnabled = activityType == LearningViewModel.ActivityType.SPELLING, 
-                        onDroppedOnTarget = { char ->
-                            if (!isTransitioning) viewModel.onCharTyped(char)
-                        },
-                        dropTargetPosition = dropTargetPosition,
-                        dropTargetSize = dropTargetSize
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.9f))))
+                            .padding(bottom = 32.dp, top = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        KidKeyboard(
+                            keys = keyboardKeys,
+                            onKeyClick = { if (!isTransitioning) viewModel.onCharTyped(it) },
+                            targetChar = targetChar,
+                            showHint = showHint && !hintBlocked && !isTransitioning,
+                            keySize = safeKeySize,
+                            isDragEnabled = activityType == LearningViewModel.ActivityType.SPELLING, 
+                            onDroppedOnTarget = { char ->
+                                if (!isTransitioning) viewModel.onCharTyped(char)
+                            },
+                            dropTargetPosition = dropTargetPosition,
+                            dropTargetSize = dropTargetSize
+                        )
+                    }
+                }
+                
+                if (activityType == LearningViewModel.ActivityType.STORY_TELLING) {
+                    Button(
+                        onClick = { viewModel.onCharTyped("") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp)
+                            .height(72.dp)
+                            .shadow(8.dp, RoundedCornerShape(24.dp)),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PastelGreen)
+                    ) {
+                        Text("✨ متوجه شدم! ✨", fontSize = 22.sp, fontWeight = FontWeight.Black)
+                    }
                 }
             }
 
@@ -259,6 +289,85 @@ fun LearningSessionScreen(
                 SuccessFestivalOverlay()
             }
         }
+    }
+}
+
+@Composable
+fun StoryModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, isGenerating: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition(label = "StoryFloat")
+    val floatAnim by infiniteTransition.animateFloat(
+        initialValue = -10f, 
+        targetValue = 10f, 
+        animationSpec = infiniteRepeatable(tween(2000, easing = EaseInOutSine), RepeatMode.Reverse), 
+        label = "float"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .graphicsLayer { translationY = floatAnim }
+            .shadow(24.dp, RoundedCornerShape(40.dp)),
+        shape = RoundedCornerShape(40.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(4.dp, SkyBlue.copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("📖 دنیایِ قصه‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black, color = DeepOcean)
+            Spacer(modifier = Modifier.height(24.dp))
+            Box(modifier = Modifier.size(160.dp), contentAlignment = Alignment.Center) {
+                if (isGenerating) {
+                    CircularProgressIndicator(color = MangoOrange, strokeWidth = 6.dp, modifier = Modifier.size(80.dp))
+                } else {
+                    Text(getEmojiForWord(item.word), fontSize = 100.sp)
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = if (isGenerating) "درحالِ ساختن یک داستان جادویی..." else "به داستان گوش کن عزیزم...",
+                textAlign = TextAlign.Center,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = DeepOcean.copy(alpha = 0.8f)
+            )
+        }
+    }
+}
+
+@Composable
+fun TracingModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, onComplete: () -> Unit) {
+    var isTouched by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(if (isTouched) 1.2f else 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "TracingScale")
+    
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 20.dp)) {
+        Text("🎨 نِشانه جادویی", fontSize = 30.sp, fontWeight = FontWeight.Black, color = DeepOcean)
+        Spacer(modifier = Modifier.height(48.dp))
+        Box(
+            modifier = Modifier
+                .size(280.dp)
+                .scale(scale)
+                .background(
+                    brush = Brush.radialGradient(listOf(Color.White, PastelGreen.copy(alpha = 0.1f))),
+                    shape = CircleShape
+                )
+                .border(6.dp, PastelGreen, CircleShape)
+                .shadow(if (isTouched) 30.dp else 10.dp, CircleShape)
+                .clickable { 
+                    isTouched = true
+                    onComplete() 
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(item.character, fontSize = 160.sp, fontWeight = FontWeight.Black, color = PastelGreen)
+            
+            // Sparkle effect placeholder
+            if (isTouched) {
+                Text("✨", modifier = Modifier.align(Alignment.TopEnd).offset(x = (-40).dp, y = 40.dp), fontSize = 40.sp)
+                Text("⭐", modifier = Modifier.align(Alignment.BottomStart).offset(x = 40.dp, y = (-40).dp), fontSize = 30.sp)
+            }
+        }
+        Spacer(modifier = Modifier.height(32.dp))
+        Text("برای شروعِ جادو، روی نشانه بزن!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = DeepOcean.copy(alpha = 0.7f))
     }
 }
 
@@ -293,19 +402,20 @@ fun WordDisplay(
             val textAlpha = if (isTyped) 1f else 0.5f
             val scale by animateFloatAsState(if (isTyped) 1.25f else 1f, label = "charScale")
             
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 4.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 6.dp)) {
                 Text(
                     text = displayText,
-                    fontSize = 44.sp,
+                    fontSize = 48.sp,
                     fontWeight = FontWeight.Black,
                     color = color.copy(alpha = textAlpha),
                     modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale }
                 )
                 Box(
                     modifier = Modifier
-                        .width(32.dp)
-                        .height(if (isMissing) 8.dp else 6.dp)
+                        .width(36.dp)
+                        .height(if (isMissing) 10.dp else 6.dp)
                         .background(color, RoundedCornerShape(3.dp))
+                        .shadow(if (isMissing) 4.dp else 0.dp, RoundedCornerShape(3.dp))
                 )
             }
         }
@@ -325,15 +435,15 @@ fun WordCard(item: com.github.opscalehub.chistanland.data.LearningItem, onPlaySo
             .shadow(20.dp, RoundedCornerShape(48.dp)),
         shape = RoundedCornerShape(48.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(2.dp, Color.White.copy(alpha = 0.5f))
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(16.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                val emoji = getEmojiForWord(item.word, item.category)
+                val emoji = getEmojiForWord(item.word)
                 val context = LocalContext.current
 
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
-                    // Logic fix: Prioritize specific emojis over placeholder drawables
-                    if (emoji != "🌟" && emoji != "🔢") {
+                    if (emoji != "🌟") {
                         Text(text = emoji, fontSize = 120.sp)
                     } else {
                         val imageResId = remember(item.imageUrl) { try { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) } catch(e: Exception) { 0 } }
@@ -350,58 +460,15 @@ fun WordCard(item: com.github.opscalehub.chistanland.data.LearningItem, onPlaySo
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(item.word, fontSize = 38.sp, fontWeight = FontWeight.Black, color = if (item.category == "NUMBER") MangoOrange else SkyBlue)
+                Text(item.word, fontSize = 42.sp, fontWeight = FontWeight.Black, color = SkyBlue)
                 
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                    Icon(Icons.Default.PlayArrow, null, tint = MangoOrange, modifier = Modifier.size(28.dp))
-                    Text("بشنو", color = MangoOrange, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Icon(Icons.Default.PlayArrow, null, tint = MangoOrange, modifier = Modifier.size(32.dp))
+                    Text("بشنو", color = MangoOrange, fontWeight = FontWeight.Black, fontSize = 18.sp)
                 }
             }
         }
     }
-}
-
-@Composable
-fun SessionQuantityIndicator(numberChar: String) {
-    val count = remember(numberChar) {
-        when(numberChar) {
-            "۱" -> 1; "۲" -> 2; "۳" -> 3; "۴" -> 4; "۵" -> 5
-            "۶" -> 6; "۷" -> 7; "۸" -> 8; "۹" -> 9; "۰" -> 0; else -> 0
-        }
-    }
-    val rows = if (count <= 5) 1 else 2
-    val itemsPerRow = if (count <= 5) count else (count + 1) / 2
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 32.dp)
-            .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
-            .border(1.dp, MangoOrange.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        repeat(rows) { rowIndex ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                val start = rowIndex * itemsPerRow
-                val end = minOf(start + itemsPerRow, count)
-                for (i in start until end) {
-                    MagicOrb(index = i)
-                }
-            }
-        }
-        if (count == 0) {
-            Text("خالی (صفر)", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-fun MagicOrb(index: Int) {
-    val infiniteTransition = rememberInfiniteTransition(label = "orb")
-    val floatAnim by infiniteTransition.animateFloat(0f, 8f, infiniteRepeatable(tween(1000 + (index * 100), easing = EaseInOutSine), RepeatMode.Reverse), label = "float")
-    Box(modifier = Modifier.size(32.dp).graphicsLayer { translationY = floatAnim }.background(brush = Brush.radialGradient(colors = listOf(Color.White, MangoOrange)), shape = CircleShape).border(2.dp, Color.White, CircleShape).shadow(4.dp, CircleShape))
 }
 
 @Composable
@@ -411,25 +478,38 @@ fun SuccessFestivalOverlay() {
     
     if (resId != 0) {
         val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(resId))
-        Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
             LottieAnimation(
                 composition = composition, 
                 iterations = LottieConstants.IterateForever, 
-                modifier = Modifier.size(400.dp)
+                modifier = Modifier.size(450.dp)
             )
-            Text("✨ تبریک! ✨", fontSize = 54.sp, fontWeight = FontWeight.Black, color = MangoOrange, modifier = Modifier.shadow(8.dp, CircleShape))
+            Surface(
+                color = Color.White,
+                shape = RoundedCornerShape(32.dp),
+                border = BorderStroke(4.dp, MangoOrange),
+                modifier = Modifier.shadow(16.dp, RoundedCornerShape(32.dp))
+            ) {
+                Text(
+                    "✨ صد آفرین! ✨", 
+                    modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
+                    fontSize = 44.sp, 
+                    fontWeight = FontWeight.Black, 
+                    color = MangoOrange
+                )
+            }
         }
     } else {
-        Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.6f)), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.7f)), contentAlignment = Alignment.Center) {
             Text("✨ تبریک! ✨", fontSize = 64.sp, fontWeight = FontWeight.Black, color = MangoOrange)
         }
     }
 }
 
-fun getEmojiForWord(word: String, category: String): String {
+fun getEmojiForWord(word: String): String {
     return when(word) {
-        "آ" -> "🌟"; "آب" -> "💧"; "باد" -> "🌬️"; "بام" -> "🏠"; "بار" -> "⚖️" 
-        "سبد" -> "🧺"; "بابا" -> "🧔"; "نان" -> "🍞"; "باز" -> "🦅"; "دست" -> "🖐️"
+        "آ" -> "🌟"; "آب" -> "💧"; "باد" -> "🌬️"; "بام" -> "🏠"; "بار" -> "🍎" 
+        "سبد" -> "🧺"; "بابا" -> "🧔"; "نان" -> "🍞"; "باز" -> "🦅"; "دست" -> "🖐️"; "درخت" -> "🌳"; "روباه" -> "🦊"; "ستاره" -> "⭐"; "مادر" -> "👩"; "توت" -> "🍓"; "زرافه" -> "🦒"
         else -> "🌟"
     }
 }
@@ -498,9 +578,9 @@ fun KidKeyboard(
     val reversedKeys = keys.reversed()
     val rows = reversedKeys.chunked(maxKeysPerRow)
     
-    Column(modifier = Modifier.wrapContentWidth(), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier = Modifier.wrapContentWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         rows.forEach { row ->
-            Row(modifier = Modifier.wrapContentWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)) {
+            Row(modifier = Modifier.wrapContentWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)) {
                 row.forEach { char ->
                     val isHighlighted = showHint && char == targetChar
                     KeyButton(
@@ -544,9 +624,9 @@ fun KeyButton(
             .size(size)
             .offset(x = offsetX.dp, y = offsetY.dp)
             .graphicsLayer { 
-                scaleX = if (isDragging) 1.2f else scalePulse
-                scaleY = if (isDragging) 1.2f else scalePulse
-                shadowElevation = if (isDragging) 16f else 4f
+                scaleX = if (isDragging) 1.25f else scalePulse
+                scaleY = if (isDragging) 1.25f else scalePulse
+                shadowElevation = if (isDragging) 20f else 6f
             }
             .pointerInput(isDragEnabled) {
                 if (!isDragEnabled) return@pointerInput
@@ -554,8 +634,7 @@ fun KeyButton(
                     onDragStart = { isDragging = true; view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS) },
                     onDragEnd = {
                         isDragging = false
-                        val isDroppedInTarget = true 
-                        if (isDroppedInTarget) onDroppedOnTarget(char)
+                        onDroppedOnTarget(char)
                         offsetX = 0f
                         offsetY = 0f
                     },
@@ -568,11 +647,11 @@ fun KeyButton(
                 )
             }
             .clickable(enabled = !isDragging) { onClick() }
-            .shadow(if (isHighlighted || isDragging) 12.dp else 4.dp, RoundedCornerShape(20.dp)),
-        shape = RoundedCornerShape(20.dp), color = animatedBgColor, border = BorderStroke(3.dp, Color.White.copy(alpha = 0.6f))
+            .shadow(if (isHighlighted || isDragging) 12.dp else 4.dp, RoundedCornerShape(22.dp)),
+        shape = RoundedCornerShape(22.dp), color = animatedBgColor, border = BorderStroke(3.dp, Color.White.copy(alpha = 0.7f))
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Text(char, fontSize = (size.value * 0.42).sp, fontWeight = FontWeight.ExtraBold, color = if (isHighlighted) DeepOcean else Color.White)
+            Text(char, fontSize = (size.value * 0.45).sp, fontWeight = FontWeight.ExtraBold, color = if (isHighlighted) DeepOcean else Color.White)
         }
     }
 }

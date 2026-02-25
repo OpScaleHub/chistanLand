@@ -30,7 +30,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.*
@@ -38,8 +37,6 @@ import com.github.opscalehub.chistanland.data.LearningItem
 import com.github.opscalehub.chistanland.ui.LearningViewModel
 import com.github.opscalehub.chistanland.ui.theme.*
 import kotlinx.coroutines.delay
-import kotlin.math.cos
-import kotlin.math.sin
 
 @Composable
 fun IslandMapScreen(
@@ -56,7 +53,7 @@ fun IslandMapScreen(
     var showFinalCelebration by remember { mutableStateOf(false) }
 
     LaunchedEffect(allMastered) {
-        if (allMastered && items.isNotEmpty() && category == "ALPHABET") {
+        if (allMastered && items.isNotEmpty()) {
             delay(800)
             showFinalCelebration = true
         }
@@ -67,20 +64,12 @@ fun IslandMapScreen(
             .fillMaxSize()
             .background(
                 brush = Brush.verticalGradient(
-                    colors = if (category == "NUMBER")
-                        listOf(Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color.White)
-                    else
-                        listOf(SkyBlue.copy(alpha = 0.5f), Color.White)
+                    colors = listOf(SkyBlue.copy(alpha = 0.5f), Color.White)
                 )
             )
     ) {
-        if (category == "NUMBER") {
-            NumberPeakDecorations()
-        }
-
         Column(modifier = Modifier.fillMaxSize()) {
             MapHeader(
-                category = category ?: "",
                 onOpenParentPanel = onOpenParentPanel,
                 onBack = onBack
             )
@@ -88,22 +77,13 @@ fun IslandMapScreen(
             if (items.isEmpty()) {
                 EmptyMapState { viewModel.seedData() }
             } else {
-                SagaMap(items, category ?: "", onStartSession, onStartReview)
+                SagaMap(items, onStartSession, onStartReview)
             }
         }
 
         if (showFinalCelebration) {
             FinalVictoryOverlay(onClose = { showFinalCelebration = false })
         }
-    }
-}
-
-@Composable
-fun NumberPeakDecorations() {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Text("☁️", Modifier.offset(x = 20.dp, y = 100.dp).alpha(0.6f), fontSize = 40.sp)
-        Text("☁️", Modifier.align(Alignment.TopEnd).offset(x = (-30).dp, y = 180.dp).alpha(0.4f), fontSize = 50.sp)
-        Text("❄️", Modifier.offset(x = 100.dp, y = 300.dp).alpha(0.3f), fontSize = 20.sp)
     }
 }
 
@@ -151,7 +131,7 @@ fun FinalVictoryOverlay(onClose: () -> Unit) {
 }
 
 @Composable
-fun MapHeader(category: String, onOpenParentPanel: () -> Unit, onBack: () -> Unit) {
+fun MapHeader(onOpenParentPanel: () -> Unit, onBack: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(24.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -160,7 +140,7 @@ fun MapHeader(category: String, onOpenParentPanel: () -> Unit, onBack: () -> Uni
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = DeepOcean) }
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text = if (category == "NUMBER") "قله اعداد" else "جزیره‌های دانایی", fontSize = 28.sp, fontWeight = FontWeight.Black, color = DeepOcean)
+            Text(text = "جزیره‌های دانایی", fontSize = 28.sp, fontWeight = FontWeight.Black, color = DeepOcean)
         }
         Surface(
             modifier = Modifier.size(48.dp).pointerInput(Unit) { detectTapGestures(onLongPress = { onOpenParentPanel() }) },
@@ -170,7 +150,7 @@ fun MapHeader(category: String, onOpenParentPanel: () -> Unit, onBack: () -> Uni
 }
 
 @Composable
-fun SagaMap(items: List<LearningItem>, category: String, onStartSession: (LearningItem) -> Unit, onStartReview: (List<LearningItem>) -> Unit) {
+fun SagaMap(items: List<LearningItem>, onStartSession: (LearningItem) -> Unit, onStartReview: (List<LearningItem>) -> Unit) {
     val listState = rememberLazyListState()
 
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 120.dp, top = 20.dp)) {
@@ -181,12 +161,12 @@ fun SagaMap(items: List<LearningItem>, category: String, onStartSession: (Learni
 
             Column(horizontalAlignment = if (isEven) Alignment.Start else Alignment.End) {
                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = if (isEven) Alignment.CenterStart else Alignment.CenterEnd) {
-                    if (index < items.size - 1) PathConnection(isEven, category)
+                    if (index < items.size - 1) PathConnection(isEven)
                     IslandNode(item = item, isLocked = isLocked, modifier = Modifier.padding(horizontal = 40.dp), onClick = { onStartSession(item) })
                 }
                 
                 // شهربازی مرور بعد از هر ۳ جزیره
-                if (category == "ALPHABET" && (index + 1) % 3 == 0 && index < items.size - 1) {
+                if ((index + 1) % 3 == 0 && index < items.size - 1) {
                     // منطق اصلاح شده: شهربازی زمانی باز می‌شود که تمام حروفِ قبل از آن حداقل یک بار دیده شده باشند
                     val reviewItems = items.take(index + 1)
                     val isReviewLocked = reviewItems.any { it.lastReviewTime == 0L }
@@ -216,19 +196,14 @@ fun AmusementParkNode(isLocked: Boolean, modifier: Modifier, onClick: () -> Unit
 }
 
 @Composable
-fun PathConnection(isEven: Boolean, category: String) {
+fun PathConnection(isEven: Boolean) {
     Canvas(modifier = Modifier.fillMaxWidth().height(140.dp).offset(y = 90.dp)) {
         val path = Path().apply {
             if (isEven) { moveTo(size.width * 0.25f, 0f); cubicTo(size.width * 0.25f, size.height * 0.5f, size.width * 0.75f, size.height * 0.5f, size.width * 0.75f, size.height) }
             else { moveTo(size.width * 0.75f, 0f); cubicTo(size.width * 0.75f, size.height * 0.5f, size.width * 0.25f, size.height * 0.5f, size.width * 0.25f, size.height) }
         }
 
-        if (category == "NUMBER") {
-            drawPath(path = path, color = Color.Gray.copy(alpha = 0.2f), style = Stroke(width = 12f))
-            drawPath(path = path, color = Color.White.copy(alpha = 0.5f), style = Stroke(width = 4f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 20f), 0f)))
-        } else {
-            drawPath(path = path, color = DeepOcean.copy(alpha = 0.1f), style = Stroke(width = 8f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)))
-        }
+        drawPath(path = path, color = DeepOcean.copy(alpha = 0.1f), style = Stroke(width = 8f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)))
     }
 }
 
@@ -241,17 +216,13 @@ fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modif
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier.graphicsLayer(translationY = if (!isLocked) floatAnim else 0f).clickable(enabled = !isLocked) { onClick() }) {
         Box(contentAlignment = Alignment.Center) {
-            if (!isLocked && item.category == "NUMBER") {
-                QuantityIndicator(item.character)
-            }
-
             Surface(
                 modifier = Modifier.size(115.dp).shadow(if (isLocked) 0.dp else 12.dp, CircleShape),
                 shape = CircleShape,
                 color = when {
                     isLocked -> Color(0xFFE0E0E0)
                     item.isMastered -> Color(0xFFFFD600)
-                    else -> if (item.category == "NUMBER") MangoOrange else PastelGreen
+                    else -> PastelGreen
                 },
                 border = BorderStroke(4.dp, Color.White.copy(alpha = 0.6f))
             ) {
@@ -259,7 +230,7 @@ fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modif
                     if (isLocked) Icon(Icons.Default.Lock, null, tint = Color.Gray)
                     else {
                         val emoji = getEmojiForItem(item)
-                        if (emoji != "🌟" && emoji != "🔢") {
+                        if (emoji != "🌟") {
                             Text(text = emoji, fontSize = 54.sp)
                         } else {
                             val imageResId = remember(item.imageUrl) { context.resources.getIdentifier(item.imageUrl, "drawable", context.packageName) }
@@ -285,52 +256,7 @@ fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modif
     }
 }
 
-@Composable
-fun QuantityIndicator(numberChar: String, dotSize: Dp = 12.dp, radiusSize: Dp = 72.dp) {
-    val count = remember(numberChar) {
-        when(numberChar) {
-            "۱" -> 1; "۲" -> 2; "۳" -> 3; "۴" -> 4; "۵" -> 5
-            "۶" -> 6; "۷" -> 7; "۸" -> 8; "۹" -> 9; else -> 0
-        }
-    }
-
-    val infiniteTransition = rememberInfiniteTransition(label = "dots")
-    val angle by infiniteTransition.animateFloat(0f, 360f, infiniteRepeatable(tween(10000, easing = LinearEasing)), label = "rotate")
-    val pulse by infiniteTransition.animateFloat(0.8f, 1.2f, infiniteRepeatable(tween(1000, easing = EaseInOutSine), RepeatMode.Reverse), label = "pulse")
-
-    if (count > 0) {
-        Box(modifier = Modifier.size(radiusSize * 2 + dotSize), contentAlignment = Alignment.Center) {
-            repeat(count) { i ->
-                val dotAngle = (angle + (i * (360f / count))) * (Math.PI / 180f).toFloat()
-                Box(
-                    modifier = Modifier
-                        .offset(
-                            x = (radiusSize.value * cos(dotAngle)).dp,
-                            y = (radiusSize.value * sin(dotAngle)).dp
-                        )
-                        .size(dotSize * pulse)
-                        .background(
-                            brush = Brush.radialGradient(
-                                colors = listOf(Color.White, MangoOrange, Color.Transparent)
-                            ),
-                            shape = CircleShape
-                        )
-                        .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                        .shadow(6.dp, CircleShape)
-                )
-            }
-        }
-    }
-}
-
 fun getEmojiForItem(item: LearningItem): String {
-    if (item.category == "NUMBER") {
-        return when(item.character) {
-            "۰" -> "🥚"; "۱" -> "🦒"; "۲" -> "🦢"; "۳" -> "🦋"; "۴" -> "🍀"
-            "۵" -> "🖐️"; "۶" -> "🐌"; "۷" -> "🌈"; "۸" -> "🐙"; "۹" -> "🎈"
-            else -> "🔢"
-        }
-    }
     return when(item.word) {
         "آ" -> "🌟"; "آب" -> "💧"; "باد" -> "🌬️"; "بام" -> "🏠"; "بار" -> "🍎"
         "سبد" -> "🧺"; "بابا" -> "🧔"; "نان" -> "🍞"; "باز" -> "🦅"; "دست" -> "🖐️"

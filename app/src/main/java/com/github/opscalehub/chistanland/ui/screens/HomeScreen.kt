@@ -49,25 +49,14 @@ fun HomeScreen(
 
             CategoryCard(
                 title = "جزیره الفبا",
-                subtitle = "ماجراجویی کلمات",
+                subtitle = "سفر به دنیای نشانه‌ها",
                 icon = "🏝️",
                 color = PastelGreen,
                 onClick = { onSelectCategory("ALPHABET") }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            CategoryCard(
-                title = "قله اعداد",
-                subtitle = "بازی با شماره‌ها",
-                icon = "🏔️",
-                color = MangoOrange,
-                onClick = { onSelectCategory("NUMBER") }
-            )
-
             Spacer(modifier = Modifier.height(64.dp))
 
-            // Fixed Parent Gate: Now actually responds to long press
             Text(
                 text = "تنظیمات والدین (لمس طولانی)",
                 color = DeepOcean.copy(alpha = 0.5f),
@@ -83,7 +72,6 @@ fun HomeScreen(
             )
         }
 
-        // Hidden/Small Parent Gate (Backup/Secondary)
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -111,43 +99,42 @@ fun CategoryCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp)
+            .height(200.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(40.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
-                modifier = Modifier.size(80.dp),
+                modifier = Modifier.size(90.dp),
                 shape = RoundedCornerShape(24.dp),
                 color = color.copy(alpha = 0.2f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(text = icon, fontSize = 40.sp)
+                    Text(text = icon, fontSize = 50.sp)
                 }
             }
 
-            Spacer(modifier = Modifier.width(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Column {
-                Text(
-                    text = title,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Black,
-                    color = DeepOcean
-                )
-                Text(
-                    text = subtitle,
-                    fontSize = 16.sp,
-                    color = DeepOcean.copy(alpha = 0.6f)
-                )
-            }
+            Text(
+                text = title,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                color = DeepOcean
+            )
+            Text(
+                text = subtitle,
+                fontSize = 18.sp,
+                color = DeepOcean.copy(alpha = 0.6f)
+            )
         }
     }
 }
