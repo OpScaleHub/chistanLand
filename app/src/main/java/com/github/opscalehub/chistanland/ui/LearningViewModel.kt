@@ -292,77 +292,70 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private fun generateAdaptiveKeyboard(item: LearningItem) {
         val wordChars = item.word.map { it.toString() }.toSet()
         val mandatory = wordChars.toMutableSet()
+        
         val distractorCount = when(item.level) {
             1 -> 0 
-            2 -> 2
+            2 -> if (item.id.contains("p0")) 1 else 2 
             3 -> 3
             else -> 4
         }
+        
         if (distractorCount == 0) {
             _keyboardKeys.value = mandatory.toList().shuffled()
             return
         }
+        
         val currentItems = allItems.value
         val learnedLetters = currentItems
             .filter { it.isMastered }
             .flatMap { it.word.map { c -> c.toString() } }
             .toSet()
+            
         val potentialDistractors = (learnedLetters - mandatory).toList()
         val distractors = if (potentialDistractors.size >= distractorCount) {
             potentialDistractors.shuffled().take(distractorCount)
         } else {
-            listOf("ا", "ب", "د", "م", "س", "ر", "ن", "ز", "ت").filter { it !in mandatory }.shuffled().take(distractorCount)
+            listOf("آ", "ب", "د", "م", "ر", "ز", "س", "ن", "ت", "و").filter { it !in mandatory }.shuffled().take(distractorCount)
         }
         _keyboardKeys.value = (mandatory.toList() + distractors).shuffled()
     }
 
     fun seedData() {
         viewModelScope.launch {
-            // ترتیب آموزشی پله‌پله (Scaffolding): هر کلمه فقط شامل حروف همان پله یا پله‌های قبل است.
+            // زنجیره یادگیری ۱۰۰٪ عینی و تصویری (Concrete V2.1)
             val pedagogicalData = listOf(
-                // پله ۱: شروع با ساده‌ترین‌ها (آ، ب)
                 LearningItem("p01", "آ", "آ", "آ", "img_a1", "ALPHABET"),
                 LearningItem("p02", "ب", "بابا", "بابا", "img_a2", "ALPHABET"),
-                LearningItem("p03", "د", "آباد", "آباد", "img_a3", "ALPHABET"),
-                
-                // پله ۲: ترکیب با نشانه‌های جدید (م، ن)
+                LearningItem("p03", "د", "باد", "باد", "img_a3", "ALPHABET"),
                 LearningItem("p04", "م", "بام", "بام", "img_a4", "ALPHABET"),
-                LearningItem("p05", "ن", "نان", "نان", "img_a5", "ALPHABET"),
-                
-                // پله ۳: حرکت و صداهای کشیده (ر، ز)
-                LearningItem("p06", "ر", "بار", "بار", "img_a6", "ALPHABET"),
-                LearningItem("p07", "ز", "باز", "باز", "img_a7", "ALPHABET"),
-                
-                // پله ۴: حروف پایه دیگر (س، ت)
-                LearningItem("p08", "س", "سام", "سام", "img_a8", "ALPHABET"),
-                LearningItem("p09", "ت", "تار", "تار", "img_a9", "ALPHABET"),
-                
-                // پله ۵: حروف دارای شباهت ظاهری (و، ه)
-                LearningItem("p10", "و", "بوم", "بوم", "img_a10", "ALPHABET"),
-                LearningItem("p11", "ه", "ماه", "ماه", "img_a11", "ALPHABET"),
-                
-                // پله ۶: تکمیل تدریجی با کلمات ساده
-                LearningItem("p12", "ی", "سینی", "سینی", "img_a12", "ALPHABET"),
-                LearningItem("p13", "ش", "شام", "شام", "img_a13", "ALPHABET"),
-                LearningItem("p14", "خ", "خار", "خار", "img_a14", "ALPHABET"),
-                LearningItem("p15", "ف", "فارس", "فارس", "img_a15", "ALPHABET"),
-                LearningItem("p16", "ق", "قند", "قند", "img_a16", "ALPHABET"),
-                LearningItem("p17", "ل", "لادن", "لادن", "img_a17", "ALPHABET"),
-                LearningItem("p18", "ک", "کارد", "کارد", "img_a18", "ALPHABET"),
-                LearningItem("p19", "گ", "گام", "گام", "img_a19", "ALPHABET"),
-                LearningItem("p20", "پ", "پایان", "پایان", "img_a20", "ALPHABET"),
+                LearningItem("p05", "ر", "آرد", "آرد", "img_a5", "ALPHABET"),
+                LearningItem("p06", "ز", "بازار", "بازار", "img_a6", "ALPHABET"),
+                LearningItem("p07", "و", "دود", "دود", "img_a7", "ALPHABET"),
+                LearningItem("p08", "س", "سبد", "سبد", "img_a8", "ALPHABET"),
+                LearningItem("p09", "ن", "نان", "نان", "img_a9", "ALPHABET"),
+                LearningItem("p10", "ت", "تاب", "تاب", "img_a10", "ALPHABET"),
+                LearningItem("p11", "ی", "سینی", "سینی", "img_a11", "ALPHABET"),
+                LearningItem("p12", "ش", "آش", "آش", "img_a12", "ALPHABET"),
+                LearningItem("p13", "ه", "کوه", "کوه", "img_a13", "ALPHABET"),
+                LearningItem("p14", "پ", "توپ", "توپ", "img_a14", "ALPHABET"),
+                LearningItem("p15", "خ", "شاخ", "شاخ", "img_a15", "ALPHABET"),
+                LearningItem("p16", "ف", "برف", "برف", "img_a16", "ALPHABET"),
+                LearningItem("p17", "ق", "قند", "قند", "img_a17", "ALPHABET"),
+                LearningItem("p18", "ل", "گل", "گل", "img_a18", "ALPHABET"),
+                LearningItem("p19", "ک", "کارد", "کارد", "img_a19", "ALPHABET"),
+                LearningItem("p20", "گ", "سگ", "سگ", "img_a20", "ALPHABET"),
                 LearningItem("p21", "چ", "چادر", "چادر", "img_a21", "ALPHABET"),
-                LearningItem("p22", "ج", "جان", "جان", "img_a22", "ALPHABET"),
-                LearningItem("p23", "ح", "حرم", "حرم", "img_a23", "ALPHABET"),
-                LearningItem("p24", "ع", "عادل", "عادل", "img_a24", "ALPHABET"),
+                LearningItem("p22", "ج", "جوجه", "جوجه", "img_a22", "ALPHABET"),
+                LearningItem("p23", "ح", "حوله", "حوله", "img_a23", "ALPHABET"),
+                LearningItem("p24", "ع", "عروسک", "عروسک", "img_a24", "ALPHABET"),
                 LearningItem("p25", "غ", "غار", "غار", "img_a25", "ALPHABET"),
                 LearningItem("p26", "ط", "طناب", "طناب", "img_a26", "ALPHABET"),
-                LearningItem("p27", "ظ", "ناظم", "ناظم", "img_a27", "ALPHABET"),
-                LearningItem("p28", "ص", "صابون", "صابون", "img_a28", "ALPHABET"),
-                LearningItem("p29", "ض", "رضا", "رضا", "img_a29", "ALPHABET"),
-                LearningItem("p30", "ذ", "آذر", "آذر", "img_a30", "ALPHABET"),
-                LearningItem("p31", "ث", "ثبت", "ثبت", "img_a31", "ALPHABET"),
-                LearningItem("p32", "ژ", "دژ", "دژ", "img_a32", "ALPHABET")
+                LearningItem("p27", "ص", "صابون", "صابون", "img_a27", "ALPHABET"),
+                LearningItem("p28", "ض", "وضو", "وضو", "img_a28", "ALPHABET"),
+                LearningItem("p29", "ظ", "ظرف", "ظرف", "img_a29", "ALPHABET"),
+                LearningItem("p30", "ذ", "ذره‌بین", "ذره‌بین", "img_a30", "ALPHABET"),
+                LearningItem("p31", "ث", "مثلث", "مثلث", "img_a31", "ALPHABET"),
+                LearningItem("p32", "ژ", "ژله", "ژله", "img_a32", "ALPHABET")
             )
             repository.insertInitialData(pedagogicalData)
         }
