@@ -4,12 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>چیستان‌آباد | الفبای ماجراجو و قله اعداد</title>
+    <title>چیستان‌آباد | ماجراجویی در جزیره‌های الفبا</title>
 
     <!-- SEO & Social Media Meta Tags -->
     <meta name="description"
-        content="چیستان‌آباد: یک ماجراجویی شگفت‌انگیز برای یادگیری الفبا و اعداد فارسی، مخصوص قهرمان‌های کوچک ۴ تا ۶ ساله.">
-    <meta name="keywords" content="آموزش الفبا, آموزش اعداد, بازی آموزشی, کودکان, فارسی, چیستان‌آباد">
+        content="چیستان‌آباد: یک ماجراجویی شگفت‌انگیز برای یادگیری الفبای فارسی، مخصوص قهرمان‌های کوچک ۴ تا ۶ ساله.">
+    <meta name="keywords" content="آموزش الفبا, بازی آموزشی, کودکان, فارسی, چیستان‌آباد, یادگیری بازی‌محور">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;400;700;900&display=swap" rel="stylesheet">
@@ -54,6 +54,14 @@
         .screenshot-shadow {
             box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.25), 0 30px 60px -30px rgba(0, 0, 0, 0.3);
         }
+
+        .card-pop {
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .card-pop:hover {
+            transform: scale(1.05);
+        }
     </style>
 </head>
 
@@ -66,12 +74,12 @@
         </div>
         <div class="hidden md:flex gap-8 font-bold text-blue-800">
             <a href="#features" class="hover:text-mango">ویژگی‌ها</a>
-            <a href="#numbers" class="hover:text-mango">قله اعداد</a>
+            <a href="#learning-path" class="hover:text-mango">مسیر یادگیری</a>
             <a href="#parents" class="hover:text-mango">والدین</a>
         </div>
         <a href="chistanland-latest.apk"
             class="bg-mango text-white px-6 py-3 rounded-full font-bold shadow-lg hover:scale-105 transition-transform">
-            دریافت APK
+            دریافت برنامه
         </a>
     </nav>
 
@@ -80,58 +88,58 @@
         <div class="lg:w-1/2 text-center lg:text-right">
             <div class="hero-float inline-block mb-6 text-7xl">✨</div>
             <h1 class="text-5xl md:text-7xl font-black text-blue-900 mb-6 leading-tight">
-                سفر در <span class="text-mango">جزیره‌های دانایی</span>
+                سفر به دنیای <span class="text-mango">نشانه‌های فارسی</span>
             </h1>
             <p class="text-xl md:text-2xl text-slate-600 mb-10 leading-relaxed">
-                یک ماجراجویی شگفت‌انگیز برای یادگیری الفبا و اعداد فارسی، مخصوص قهرمان‌های کوچک <strong>۴ تا ۶
-                    ساله</strong>. جایی که یادگیری به یک بازی هیجان‌انگیز تبدیل می‌شود.
+                یک ماجراجویی مهندسی‌شده برای یادگیری الفبا، مخصوص قهرمان‌های کوچک <strong>۴ تا ۶
+                    ساله</strong>. جایی که هر حرف یک جزیره و هر کلمه یک کشف جدید است.
             </p>
             <div class="flex flex-wrap gap-4 justify-center lg:justify-start">
                 <a href="chistanland-latest.apk"
                     class="bg-blue-900 text-white px-8 py-4 rounded-2xl text-xl font-black shadow-2xl hover:bg-blue-800 transition-all">
-                    📥 دانلود مستقیم برنامه
+                    📥 دانلود مستقیم نسخه جدید
                 </a>
             </div>
         </div>
         <div class="lg:w-1/2 relative">
-            <!-- Mockup for Main Home Screenshot -->
             <div
                 class="relative z-10 screenshot-shadow rounded-[3rem] border-[12px] border-slate-900 overflow-hidden bg-white max-w-[320px] mx-auto">
                 <img src="home-screen.png" alt="صفحه اصلی چیستان‌آباد" class="w-full">
-                <!-- Replace with your uploaded screenshot URL -->
             </div>
             <div class="absolute -bottom-10 -right-10 text-9xl z-0 opacity-20 hero-float">🌴</div>
         </div>
     </header>
 
-    <!-- Numbers Section -->
-    <section id="numbers" class="py-24 bg-mango/5">
-        <div class="container mx-auto px-6 flex flex-col lg:flex-row-reverse items-center gap-16">
-            <div class="lg:w-1/2">
-                <h2 class="text-4xl md:text-5xl font-black text-blue-900 mb-8">فتح <span class="text-mango">قله
-                        اعداد</span> با حباب‌های جادویی</h2>
-                <p class="text-xl text-slate-600 mb-8 leading-relaxed">
-                    در چیستان‌آباد، اعداد فقط نماد نیستند! با استفاده از حباب‌های کوانتومی، کودک شما مفهوم «مقدار» را
-                    به صورت بصری و لمسی درک می‌کند. هر عدد، داستانی از تعداد حباب‌های درخشان است که به دور کارت‌ها به
-                    پرواز در می‌آیند.
+    <!-- Learning Path Section (Replaces Numbers) -->
+    <section id="learning-path" class="py-24 bg-blue-50/50">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-black text-blue-900 mb-6">مسیر هوشمند <span class="text-mango">پله‌پله</span></h2>
+                <p class="text-xl text-slate-600 max-w-3xl mx-auto">
+                    ما الفبا را به ترتیب حروف یاد نمی‌دهیم! ما از ساده‌ترین نشانه‌ها شروع می‌کنیم تا کودک شما از همان روز اول بتواند کلمات واقعی بسازد.
                 </p>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-white p-4 rounded-2xl shadow-md border-r-4 border-mango">
-                        <span class="text-2xl block mb-2">🔮</span>
-                        <span class="font-bold">درک بصری مقدار</span>
-                    </div>
-                    <div class="bg-white p-4 rounded-2xl shadow-md border-r-4 border-mango">
-                        <span class="text-2xl block mb-2">🔢</span>
-                        <span class="font-bold">شمارش منظم و آرام</span>
-                    </div>
-                </div>
             </div>
-            <div class="lg:w-1/2">
-                <!-- Mockup for Learning Session Screenshot -->
-                <div
-                    class="screenshot-shadow rounded-[3rem] border-[12px] border-slate-900 overflow-hidden bg-white max-w-[320px] mx-auto">
-                    <img src="learning-screen.png" alt="یادگیری اعداد" class="w-full">
-                    <!-- Replace with your uploaded screenshot URL -->
+
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="bg-white p-8 rounded-[2.5rem] shadow-xl card-pop border-b-8 border-blue-200">
+                    <div class="text-5xl mb-6">🎨</div>
+                    <h3 class="text-xl font-black text-blue-900 mb-3">نقاشی نشانه‌ها</h3>
+                    <p class="text-slate-600">آشنایی بصری و لمسی با شکل هر حرف در یک محیط شاد.</p>
+                </div>
+                <div class="bg-white p-8 rounded-[2.5rem] shadow-xl card-pop border-b-8 border-mango/30">
+                    <div class="text-5xl mb-6">📖</div>
+                    <h3 class="text-xl font-black text-blue-900 mb-3">داستان‌های جادویی</h3>
+                    <p class="text-slate-600">هوش مصنوعی برای هر حرف، داستانی کوتاه و شنیدنی می‌سازد.</p>
+                </div>
+                <div class="bg-white p-8 rounded-[2.5rem] shadow-xl card-pop border-b-8 border-green-200">
+                    <div class="text-5xl mb-6">🔍</div>
+                    <h3 class="text-xl font-black text-blue-900 mb-3">پیدا کردن نشانه‌ها</h3>
+                    <p class="text-slate-600">بازی‌های اکتشافی برای تشخیص حروف در دل کلمات ساده.</p>
+                </div>
+                <div class="bg-white p-8 rounded-[2.5rem] shadow-xl card-pop border-b-8 border-purple-200">
+                    <div class="text-5xl mb-6">🎡</div>
+                    <h3 class="text-xl font-black text-blue-900 mb-3">شهربازی مرور</h3>
+                    <p class="text-slate-600">ایستگاه‌های جایزه برای تثبیت یادگیری‌های قبلی با بازی و شادی.</p>
                 </div>
             </div>
         </div>
@@ -145,26 +153,24 @@
             <div class="grid md:grid-cols-3 gap-12">
                 <div class="text-center">
                     <div
-                        class="w-20 h-20 bg-blue-100 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">
+                        class="w-24 h-24 bg-blue-100 rounded-[2rem] flex items-center justify-center text-5xl mx-auto mb-6">
                         🎹</div>
                     <h3 class="text-2xl font-bold mb-4">تایپ هوشمند</h3>
-                    <p class="text-slate-600">کیبوردی که فقط حروف مورد نیاز را نشان می‌دهد تا کودک هرگز سردرگم نشود.</p>
+                    <p class="text-slate-600">کیبوردی که فقط حروف یاد گرفته شده را نشان می‌دهد تا کودک هرگز ناامید نشود.</p>
                 </div>
                 <div class="text-center">
                     <div
-                        class="w-20 h-20 bg-green-100 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">
+                        class="w-24 h-24 bg-green-100 rounded-[2rem] flex items-center justify-center text-5xl mx-auto mb-6">
                         🌱</div>
-                    <h3 class="text-2xl font-bold mb-4">باغچه یادگیری</h3>
-                    <p class="text-slate-600">با هر پاسخ درست، گیاهی در برنامه رشد می‌کند؛ نمادی بصری از تلاش و پیشرفت
-                        فرزند شما.</p>
+                    <h3 class="text-2xl font-bold mb-4">باغچه پیشرفت</h3>
+                    <p class="text-slate-600">با هر پاسخ درست، گیاهی در برنامه رشد می‌کند؛ نمادی بصری از تلاش فرزند شما.</p>
                 </div>
                 <div class="text-center">
                     <div
-                        class="w-20 h-20 bg-orange-100 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">
+                        class="w-24 h-24 bg-orange-100 rounded-[2rem] flex items-center justify-center text-5xl mx-auto mb-6">
                         🔊</div>
-                    <h3 class="text-2xl font-bold mb-4">صدای همراه</h3>
-                    <p class="text-slate-600">تمام مراحل صوتی هستند. کودک شما بدون نیاز به سواد خواندن، کاملاً مستقل
-                        بازی می‌کند.</p>
+                    <h3 class="text-2xl font-bold mb-4">کاملاً صوتی</h3>
+                    <p class="text-slate-600">بدون نیاز به سواد خواندن برای والدین! تمام مراحل با راهنمای صوتی فارسی همراه است.</p>
                 </div>
             </div>
         </div>
