@@ -12,9 +12,11 @@ import com.github.opscalehub.chistanland.util.AudioManager
 import com.github.opscalehub.chistanland.util.TtsManager
 import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import kotlin.random.Random
 
@@ -25,6 +27,12 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val audioManager = AudioManager(application)
     val ttsManager = TtsManager(application)
     private var narrativeJob: Job? = null
+
+    // Session advancement (reward → load next) runs in its OWN job so narration/onPause/
+    // stopAudio can never cancel it mid-flight (which used to leave the UI stuck). `advancing`
+    // is a re-entrancy guard so a fast double-tap can't complete the same item twice.
+    private var advanceJob: Job? = null
+    private var advancing = false
 
     // Daily streak (consecutive days the child has played), persisted across launches.
     private val prefs = application.getSharedPreferences("chistan_prefs", Context.MODE_PRIVATE)
@@ -136,6 +144,21 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         ttsManager.stop()
     }
 
+    /**
+     * Abandon the current session cleanly when the child leaves the learning screen.
+     * Cancels everything in flight and resets state so re-entering always starts fresh —
+     * prevents stray coroutines from firing SessionComplete/onBack after we've left.
+     */
+    fun cancelSession() {
+        advanceJob?.cancel()
+        narrativeJob?.cancel()
+        ttsManager.stop()
+        advancing = false
+        _isReviewMode.value = false
+        sessionQueue.clear()
+        _currentItem.value = null
+    }
+
     /** Speak a single word (used by the sticker album when a child taps a collected sticker). */
     fun speakWord(text: String) {
         narrativeJob?.cancel()
@@ -207,6 +230,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     private fun startNextInQueue() {
         if (sessionQueue.isEmpty()) {
+            advancing = false
             _currentItem.value = null
             viewModelScope.launch { _uiEvent.emit(UiEvent.SessionComplete) }
             return
@@ -217,6 +241,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun playHintInstruction() {
+        if (advancing) return // don't talk over the reward / next-item transition
         val item = _currentItem.value ?: return
         narrativeJob?.cancel()
         narrativeJob = viewModelScope.launch {
@@ -263,6 +288,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun startLearning(item: LearningItem, isReview: Boolean = false) {
+        advancing = false // the new item is interactive again
         _isReviewMode.value = isReview
         _currentItem.value = item
         _typedText.value = ""
@@ -294,6 +320,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     /** Image-pick answer: the child tapped one of the picture choices. */
     fun onImagePicked(picked: LearningItem) {
+        if (advancing) return
         val current = _currentItem.value ?: return
         if (_activityType.value != ActivityType.WORD_RECOGNITION) return
         if (picked.id == current.id) {
@@ -319,9 +346,10 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onCharTyped(char: String) {
+        if (advancing) return // ignore input while a completion is animating to the next item
         val current = _currentItem.value ?: return
         val targetFullString = current.word
-        
+
         if (_activityType.value == ActivityType.STORY_TELLING || _activityType.value == ActivityType.TRACE_LETTER) {
             completeLevel(true)
             return
@@ -378,20 +406,26 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun completeLevel(isCorrect: Boolean) {
-        narrativeJob?.cancel()
-        narrativeJob = viewModelScope.launch {
-            val item = _currentItem.value ?: return@launch
-            // Practice/example rounds (scores = false) still reward the child but never change
-            // the stored level — extra examples deepen learning without speeding up mastery.
-            if (currentScores) repository.updateProgress(item, isCorrect)
+        if (advancing) return // already completing this item — ignore extra taps
+        advancing = true
+        val item = _currentItem.value
+        narrativeJob?.cancel() // stop any in-progress hint/story narration
+        advanceJob?.cancel()
+        // NOTE: advancement runs in advanceJob (NOT narrativeJob), so stopAudio()/onPause/
+        // narration can't cancel it — startNextInQueue() is guaranteed to run.
+        advanceJob = viewModelScope.launch {
+            // The score write must survive even if the child bolts mid-celebration.
+            if (item != null && currentScores) {
+                withContext(NonCancellable) { repository.updateProgress(item, isCorrect) }
+            }
             if (isCorrect) {
                 _streak.value += 1
-                launch { _uiEvent.emit(UiEvent.Success) }
+                _uiEvent.emit(UiEvent.Success)
                 audioManager.playSound("success_fest")
-                delay(600) 
+                delay(600)
                 val rewards = listOf("آفرین قَهرمان!", "عالی بود عَزیزم", "خیلی باهوشی!", "صد آفرین به تو", "ماشاالله، ادامه بِدِه!")
                 ttsManager.speak(rewards.random())
-                delay(2000) 
+                delay(1400)
             } else {
                 delay(1000)
             }

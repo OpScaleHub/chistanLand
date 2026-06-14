@@ -6,6 +6,7 @@ import android.graphics.PathMeasure
 import android.graphics.Rect as AndroidRect
 import android.graphics.Typeface
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -77,6 +78,19 @@ fun LearningSessionScreen(
     val scrollState = rememberScrollState()
     val configuration = LocalConfiguration.current
 
+    // Single, idempotent exit path used by the on-screen back button, the system/gesture
+    // back, and a natural SessionComplete — so leaving can never double-pop or fire after
+    // we've already left, and it always cancels in-flight session coroutines safely.
+    var exited by remember { mutableStateOf(false) }
+    val leave: () -> Unit = {
+        if (!exited) {
+            exited = true
+            viewModel.cancelSession()
+            onBack()
+        }
+    }
+    BackHandler { leave() }
+
     val shakeOffset = remember { Animatable(0f) }
     var showHint by remember { mutableStateOf(false) }
     var hintBlocked by remember { mutableStateOf(false) }
@@ -136,7 +150,7 @@ fun LearningSessionScreen(
                     showSuccessFestival = false
                 }
                 is LearningViewModel.UiEvent.SessionComplete -> {
-                    onBack()
+                    leave()
                 }
                 else -> {}
             }
@@ -184,7 +198,7 @@ fun LearningSessionScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = { if (!isTransitioning) onBack() },
+                        onClick = { leave() },
                         modifier = Modifier.size(48.dp).background(SkyBlue.copy(alpha = 0.1f), CircleShape)
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "برگشت", tint = SkyBlue)
