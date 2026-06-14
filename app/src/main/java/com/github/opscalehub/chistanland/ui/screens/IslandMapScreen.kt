@@ -44,10 +44,12 @@ fun IslandMapScreen(
     onStartSession: (LearningItem) -> Unit,
     onStartReview: (List<LearningItem>) -> Unit,
     onOpenParentPanel: () -> Unit,
+    onOpenStickers: () -> Unit,
     onBack: () -> Unit
 ) {
     val items by viewModel.filteredItems.collectAsState()
     val category by viewModel.selectedCategory.collectAsState()
+    val dailyStreak by viewModel.dailyStreak.collectAsState()
 
     val allMastered = remember(items) { items.isNotEmpty() && items.all { it.isMastered } }
     var showFinalCelebration by remember { mutableStateOf(false) }
@@ -70,7 +72,9 @@ fun IslandMapScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             MapHeader(
+                dailyStreak = dailyStreak,
                 onOpenParentPanel = onOpenParentPanel,
+                onOpenStickers = onOpenStickers,
                 onBack = onBack
             )
 
@@ -131,21 +135,52 @@ fun FinalVictoryOverlay(onClose: () -> Unit) {
 }
 
 @Composable
-fun MapHeader(onOpenParentPanel: () -> Unit, onBack: () -> Unit) {
+fun MapHeader(dailyStreak: Int, onOpenParentPanel: () -> Unit, onOpenStickers: () -> Unit, onBack: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(24.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = DeepOcean) }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "جزیره‌های دانایی", fontSize = 28.sp, fontWeight = FontWeight.Black, color = DeepOcean)
+            Text(text = "جزیره‌های دانایی", fontSize = 24.sp, fontWeight = FontWeight.Black, color = DeepOcean)
+            if (dailyStreak > 0) {
+                Spacer(modifier = Modifier.width(8.dp))
+                DailyStreakChip(dailyStreak)
+            }
         }
-        Surface(
-            modifier = Modifier.size(48.dp).pointerInput(Unit) { detectTapGestures(onLongPress = { onOpenParentPanel() }) },
-            shape = CircleShape, color = Color.White.copy(alpha = 0.5f), border = BorderStroke(2.dp, SkyBlue.copy(alpha = 0.3f))
-        ) { Icon(Icons.Default.Settings, null, modifier = Modifier.padding(12.dp), tint = DeepOcean.copy(alpha = 0.4f)) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Sticker album — the collection reward
+            Surface(
+                modifier = Modifier.size(48.dp).clickable { onOpenStickers() },
+                shape = CircleShape, color = Color.White.copy(alpha = 0.7f), border = BorderStroke(2.dp, MangoOrange.copy(alpha = 0.4f))
+            ) { Box(contentAlignment = Alignment.Center) { Text("📒", fontSize = 22.sp) } }
+            Spacer(modifier = Modifier.width(10.dp))
+            // Parent panel (long-press, hidden from kids)
+            Surface(
+                modifier = Modifier.size(48.dp).pointerInput(Unit) { detectTapGestures(onLongPress = { onOpenParentPanel() }) },
+                shape = CircleShape, color = Color.White.copy(alpha = 0.5f), border = BorderStroke(2.dp, SkyBlue.copy(alpha = 0.3f))
+            ) { Icon(Icons.Default.Settings, null, modifier = Modifier.padding(12.dp), tint = DeepOcean.copy(alpha = 0.4f)) }
+        }
+    }
+}
+
+@Composable
+fun DailyStreakChip(days: Int) {
+    val faDays = days.toString().map { c -> if (c in '0'..'9') "۰۱۲۳۴۵۶۷۸۹"[c - '0'] else c }.joinToString("")
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MangoOrange.copy(alpha = 0.15f),
+        border = BorderStroke(2.dp, MangoOrange.copy(alpha = 0.5f))
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+        ) {
+            Text("🔥", fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(3.dp))
+            Text("$faDays روز", fontSize = 14.sp, fontWeight = FontWeight.Black, color = MangoOrange)
+        }
     }
 }
 
@@ -256,10 +291,6 @@ fun IslandNode(item: LearningItem, isLocked: Boolean, modifier: Modifier = Modif
     }
 }
 
-fun getEmojiForItem(item: LearningItem): String {
-    return when(item.word) {
-        "آ" -> "🌟"; "آب" -> "💧"; "باد" -> "🌬️"; "بام" -> "🏠"; "بار" -> "🍎"
-        "سبد" -> "🧺"; "بابا" -> "🧔"; "نان" -> "🍞"; "باز" -> "🦅"; "دست" -> "🖐️"
-        else -> "🌟"
-    }
-}
+// Reuse the single source of truth for word→picture (kept in LearningSessionScreen),
+// so the map, word cards and sticker album never drift out of sync again.
+fun getEmojiForItem(item: LearningItem): String = getEmojiForWord(item.word)

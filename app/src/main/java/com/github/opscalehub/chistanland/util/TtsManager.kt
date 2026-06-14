@@ -20,41 +20,73 @@ class TtsManager(private val context: Context) {
     private var nativeTts: TextToSpeech? = null
     private val _isPersianAvailable = MutableStateFlow(false)
     val isPersianAvailable: StateFlow<Boolean> = _isPersianAvailable.asStateFlow()
-    
+
+    /** True when our dedicated offline Persian engine (AvaCore) is driving synthesis. */
+    private val _isAvaCoreActive = MutableStateFlow(false)
+    val isAvaCoreActive: StateFlow<Boolean> = _isAvaCoreActive.asStateFlow()
+
     private var _isUrduAvailable = false
     private val TAG = "TtsManager"
     private val PERSIAN_LOCALE = Locale("fa", "IR")
     private val URDU_LOCALE = Locale("ur", "PK")
-    
+
     private val initDeferred = CompletableDeferred<Boolean>()
     private var isReleased = false
 
-    init {
-        initNativeTts()
+    /** Whether AvaCore (our offline Persian neural TTS) is installed on this device. */
+    private fun isAvaCoreInstalled(): Boolean = try {
+        context.packageManager.getPackageInfo(AVACORE_PACKAGE, 0)
+        true
+    } catch (e: Exception) {
+        false
     }
 
-    private fun initNativeTts() {
-        nativeTts = TextToSpeech(context.applicationContext) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                val faResult = nativeTts?.isLanguageAvailable(PERSIAN_LOCALE)
-                _isPersianAvailable.value = faResult != null && faResult >= TextToSpeech.LANG_AVAILABLE
-                
-                val urResult = nativeTts?.isLanguageAvailable(URDU_LOCALE)
-                _isUrduAvailable = urResult != null && urResult >= TextToSpeech.LANG_AVAILABLE
+    private val ttsInitListener: TextToSpeech.OnInitListener = TextToSpeech.OnInitListener { status ->
+        if (status == TextToSpeech.SUCCESS) {
+            val faResult = nativeTts?.isLanguageAvailable(PERSIAN_LOCALE)
+            _isPersianAvailable.value = faResult != null && faResult >= TextToSpeech.LANG_AVAILABLE
 
-                // Optimized for kids: Slightly higher pitch and slightly slower rate
-                nativeTts?.setPitch(1.1f) 
-                nativeTts?.setSpeechRate(0.85f) 
+            val urResult = nativeTts?.isLanguageAvailable(URDU_LOCALE)
+            _isUrduAvailable = urResult != null && urResult >= TextToSpeech.LANG_AVAILABLE
 
-                Log.i(TAG, "TTS Ready -> Persian: ${_isPersianAvailable.value}, Urdu: $_isUrduAvailable")
-                
-                setupProgressListener()
-                initDeferred.complete(true)
+            // Optimized for kids: Slightly higher pitch and slightly slower rate
+            nativeTts?.setPitch(1.1f)
+            nativeTts?.setSpeechRate(0.85f)
+
+            Log.i(TAG, "TTS Ready -> engine=${nativeTts?.defaultEngine}, Persian: ${_isPersianAvailable.value}, Urdu: $_isUrduAvailable")
+
+            setupProgressListener()
+            initDeferred.complete(true)
+        } else {
+            Log.e(TAG, "TTS Init failed: $status")
+            // If we asked for AvaCore explicitly and it failed, retry once with the system default.
+            if (_isAvaCoreActive.value) {
+                Log.w(TAG, "AvaCore engine init failed; falling back to system default engine.")
+                _isAvaCoreActive.value = false
+                nativeTts = TextToSpeech(context.applicationContext, ttsInitListener)
             } else {
-                Log.e(TAG, "TTS Init failed: $status")
                 initDeferred.complete(false)
             }
         }
+    }
+
+    private fun initNativeTts() {
+        // Prefer AvaCore explicitly so Persian works even when it isn't the system-default engine.
+        val avaCorePresent = isAvaCoreInstalled()
+        _isAvaCoreActive.value = avaCorePresent
+
+        nativeTts = if (avaCorePresent) {
+            Log.i(TAG, "Requesting AvaCore as Persian TTS engine ($AVACORE_PACKAGE)")
+            TextToSpeech(context.applicationContext, ttsInitListener, AVACORE_PACKAGE)
+        } else {
+            TextToSpeech(context.applicationContext, ttsInitListener)
+        }
+    }
+
+    // Declared last so every property above (esp. ttsInitListener) is initialized before we
+    // construct the engine — Kotlin runs init blocks/initializers in declaration order.
+    init {
+        initNativeTts()
     }
 
     private var currentContinuation: kotlinx.coroutines.CancellableContinuation<Unit>? = null
@@ -143,5 +175,10 @@ class TtsManager(private val context: Context) {
             nativeTts?.shutdown()
             nativeTts = null
         } catch (e: Exception) {}
+    }
+
+    companion object {
+        /** Our dedicated offline Persian neural TTS engine (Piper VITS via Sherpa-ONNX). */
+        const val AVACORE_PACKAGE = "com.github.opscalehub.avacore"
     }
 }

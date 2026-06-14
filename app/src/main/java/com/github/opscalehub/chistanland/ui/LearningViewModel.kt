@@ -1,6 +1,7 @@
 package com.github.opscalehub.chistanland.ui
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.opscalehub.chistanland.BuildConfig
@@ -24,6 +25,11 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val audioManager = AudioManager(application)
     val ttsManager = TtsManager(application)
     private var narrativeJob: Job? = null
+
+    // Daily streak (consecutive days the child has played), persisted across launches.
+    private val prefs = application.getSharedPreferences("chistan_prefs", Context.MODE_PRIVATE)
+    private val _dailyStreak = MutableStateFlow(initialDailyStreak())
+    val dailyStreak: StateFlow<Int> = _dailyStreak.asStateFlow()
 
     private val generativeModel = GenerativeModel(
         modelName = "gemini-1.5-flash",
@@ -75,6 +81,10 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
+    // Image-pick (WORD_RECOGNITION): the shuffled set of picture choices, one of which matches.
+    private val _recognitionOptions = MutableStateFlow<List<LearningItem>>(emptyList())
+    val recognitionOptions: StateFlow<List<LearningItem>> = _recognitionOptions.asStateFlow()
+
     private val sessionQueue = mutableListOf<LearningItem>()
 
     enum class ActivityType { 
@@ -104,7 +114,49 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         ttsManager.stop()
     }
 
+    /** Speak a single word (used by the sticker album when a child taps a collected sticker). */
+    fun speakWord(text: String) {
+        narrativeJob?.cancel()
+        narrativeJob = viewModelScope.launch { ttsManager.speak(text) }
+    }
+
+    /** Local-time day number (days since epoch), so streaks roll over at midnight. */
+    private fun todayIndex(): Long {
+        val now = System.currentTimeMillis()
+        val tzOffset = java.util.TimeZone.getDefault().getOffset(now)
+        return (now + tzOffset) / 86_400_000L
+    }
+
+    /** Streak to show on launch: still alive if played today or yesterday, otherwise broken. */
+    private fun initialDailyStreak(): Int {
+        val last = prefs.getLong("last_play_day", -1L)
+        val stored = prefs.getInt("daily_streak", 0)
+        if (last < 0) return 0
+        val diff = todayIndex() - last
+        return if (diff == 0L || diff == 1L) stored else 0
+    }
+
+    /** Mark that the child played today and advance/reset the daily streak accordingly. */
+    fun recordPlayToday() {
+        val last = prefs.getLong("last_play_day", -1L)
+        val stored = prefs.getInt("daily_streak", 0)
+        val today = todayIndex()
+        val newStreak = when {
+            last < 0L -> 1
+            today == last -> stored.coerceAtLeast(1) // already counted today
+            today - last == 1L -> stored + 1          // consecutive day
+            else -> 1                                  // a day was missed → restart
+        }
+        prefs.edit()
+            .putInt("daily_streak", newStreak)
+            .putLong("last_play_day", today)
+            .putInt("best_streak", maxOf(newStreak, prefs.getInt("best_streak", 0)))
+            .apply()
+        _dailyStreak.value = newStreak
+    }
+
     fun startLearningSession(mainItem: LearningItem) {
+        recordPlayToday()
         sessionQueue.clear()
         sessionQueue.add(mainItem)
         val extraItems = allItems.value
@@ -116,6 +168,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun startReviewSession(items: List<LearningItem>, onStarted: () -> Unit) {
+        recordPlayToday()
         sessionQueue.clear()
         sessionQueue.addAll(items.shuffled().take(5))
         _isReviewMode.value = true
@@ -144,7 +197,8 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
                 generateAndPlayStory(item)
             } else {
                 val instruction = when (_activityType.value) {
-                    ActivityType.PHONICS_INTRO -> "بیا با هم بِنِویسیم: «${item.word}»..."
+                    // آواشناسی: اول صدای نشانه را معرفی کن، بعد آن را در کلمه نشان بده (پیوند صدا↔نشانه↔کلمه)
+                    ActivityType.PHONICS_INTRO -> "این نِشانه «${item.character}» است. «${item.character}»... مثلِ «${item.word}». بیا با هم «${item.word}» را بِنِویسیم!"
                     ActivityType.MISSING_LETTER -> "توی کلمه ${item.word}، کدوم نِشانه گُم شده؟"
                     ActivityType.SPELLING -> "حالا خودت بِنِویس: «${item.word}»"
                     ActivityType.WORD_RECOGNITION -> "تَصویرِ ${item.word} کُجاست؟"
@@ -191,16 +245,40 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         } else {
             _missingCharIndex.value = -1
         }
-        
+
+        if (_activityType.value == ActivityType.WORD_RECOGNITION) {
+            // Build the picture choices: the target word + two other words (distinct words), shuffled.
+            val distractors = allItems.value
+                .filter { it.id != item.id && it.word != item.word }
+                .distinctBy { it.word }
+                .shuffled()
+                .take(2)
+            _recognitionOptions.value = (distractors + item).shuffled()
+        } else {
+            _recognitionOptions.value = emptyList()
+        }
+
         generateAdaptiveKeyboard(item)
         playHintInstruction()
+    }
+
+    /** Image-pick answer: the child tapped one of the picture choices. */
+    fun onImagePicked(picked: LearningItem) {
+        val current = _currentItem.value ?: return
+        if (_activityType.value != ActivityType.WORD_RECOGNITION) return
+        if (picked.id == current.id) {
+            _avatarState.value = "HAPPY"
+            completeLevel(!hasErrorInCurrentWord)
+        } else {
+            handleError()
+        }
     }
 
     private fun decideActivityType(item: LearningItem, isReview: Boolean): ActivityType {
         if (isReview) {
             return listOf(ActivityType.QUICK_RECALL, ActivityType.WORD_RECOGNITION).random()
         }
-        
+
         return when (item.level) {
             1 -> ActivityType.PHONICS_INTRO
             2 -> listOf(ActivityType.TRACE_LETTER, ActivityType.MISSING_LETTER).random()
@@ -259,6 +337,7 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     private fun handleError() {
         hasErrorInCurrentWord = true
+        _streak.value = 0 // زنجیره موفقیت با اولین اشتباه صفر می‌شود (وگرنه هرگز ریست نمی‌شد)
         _avatarState.value = "THINKING"
         viewModelScope.launch {
             _uiEvent.emit(UiEvent.Error)

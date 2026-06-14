@@ -1,9 +1,15 @@
 package com.github.opscalehub.chistanland.ui.screens
 
+import android.graphics.Paint as AndroidPaint
+import android.graphics.Path as AndroidPath
+import android.graphics.PathMeasure
+import android.graphics.Rect as AndroidRect
+import android.graphics.Typeface
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +34,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -64,6 +71,7 @@ fun LearningSessionScreen(
     val activityType by viewModel.activityType.collectAsState()
     val missingCharIndex by viewModel.missingCharIndex.collectAsState()
     val isGenerating by viewModel.isGenerating.collectAsState()
+    val recognitionOptions by viewModel.recognitionOptions.collectAsState()
     
     val view = LocalView.current
     val scrollState = rememberScrollState()
@@ -214,6 +222,15 @@ fun LearningSessionScreen(
                                 LearningViewModel.ActivityType.TRACE_LETTER -> {
                                     TracingModeUI(item = item, onComplete = { viewModel.onCharTyped(item.character) })
                                 }
+                                LearningViewModel.ActivityType.WORD_RECOGNITION -> {
+                                    WordRecognitionUI(
+                                        item = item,
+                                        options = recognitionOptions,
+                                        enabled = !isTransitioning,
+                                        onPick = { viewModel.onImagePicked(it) },
+                                        modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
+                                    )
+                                }
                                 else -> {
                                     WordCard(
                                         item = item,
@@ -221,8 +238,15 @@ fun LearningSessionScreen(
                                         modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
                                     )
 
+                                    // On first encounter, show the letter's 4 connected forms (the hard part
+                                    // of Persian script): same letter, different shape when joined.
+                                    if (targetType == LearningViewModel.ActivityType.PHONICS_INTRO) {
+                                        Spacer(modifier = Modifier.height(24.dp))
+                                        LetterFormsStrip(letter = item.character)
+                                    }
+
                                     Spacer(modifier = Modifier.height(40.dp))
-                                    
+
                                     WordDisplay(
                                         targetWord = targetFullString,
                                         typedText = typedText,
@@ -230,7 +254,8 @@ fun LearningSessionScreen(
                                         activityType = targetType,
                                         missingCharIndex = missingCharIndex,
                                         onPositioned = { pos, size -> dropTargetPosition = pos; dropTargetSize = size },
-                                        modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
+                                        modifier = Modifier.graphicsLayer { translationX = shakeOffset.value },
+                                        newLetter = item.character
                                     )
                                 }
                             }
@@ -242,7 +267,9 @@ fun LearningSessionScreen(
 
                 // Keyboard Section
                 AnimatedVisibility(
-                    visible = activityType != LearningViewModel.ActivityType.STORY_TELLING && activityType != LearningViewModel.ActivityType.TRACE_LETTER,
+                    visible = activityType != LearningViewModel.ActivityType.STORY_TELLING &&
+                        activityType != LearningViewModel.ActivityType.TRACE_LETTER &&
+                        activityType != LearningViewModel.ActivityType.WORD_RECOGNITION,
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                     exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
@@ -334,40 +361,286 @@ fun StoryModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, isGen
     }
 }
 
+/**
+ * Samples the actual outline of a glyph (from the font) into a list of target points,
+ * centered inside a box of the given pixel size. This lets tracing validate that the
+ * child followed the *letter's real shape* — not just that they covered screen area.
+ * Works for all 32 letters with no per-letter art assets.
+ */
+private fun glyphTargetPoints(character: String, widthPx: Int, heightPx: Int): List<Offset> {
+    if (widthPx <= 0 || heightPx <= 0 || character.isBlank()) return emptyList()
+    val paint = AndroidPaint(AndroidPaint.ANTI_ALIAS_FLAG).apply {
+        typeface = Typeface.DEFAULT_BOLD
+        textSize = heightPx * 0.62f
+        textAlign = AndroidPaint.Align.LEFT
+    }
+    val bounds = AndroidRect()
+    paint.getTextBounds(character, 0, character.length, bounds)
+    // Center the glyph in the box (bounds.top is negative, above the baseline).
+    val baseX = (widthPx - bounds.width()) / 2f - bounds.left
+    val baseY = (heightPx - bounds.height()) / 2f - bounds.top
+
+    val path = AndroidPath()
+    paint.getTextPath(character, 0, character.length, baseX, baseY, path)
+
+    val pm = PathMeasure(path, false)
+    val step = (heightPx * 0.035f).coerceAtLeast(8f) // ~28 samples down the glyph height
+    val out = mutableListOf<Offset>()
+    val pos = FloatArray(2)
+    do {
+        val len = pm.length
+        var d = 0f
+        while (d <= len) {
+            if (pm.getPosTan(d, pos, null)) out.add(Offset(pos[0], pos[1]))
+            d += step
+        }
+    } while (pm.nextContour())
+    return out
+}
+
+/**
+ * Real finger-tracing with SHAPE accuracy. We extract the letter's outline into target
+ * points and light each one up only when the finger passes near it (forgiving tolerance
+ * for small hands). Progress = fraction of the letter's shape actually traced — so a
+ * random scribble in empty space won't fill it; the child must follow the glyph.
+ */
 @Composable
 fun TracingModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, onComplete: () -> Unit) {
-    var isTouched by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (isTouched) 1.2f else 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "TracingScale")
-    
+    val view = LocalView.current
+    // remember(item.id): every state resets cleanly when the lesson advances to a new letter.
+    val stroke = remember(item.id) { mutableStateListOf<Offset>() }
+    var completed by remember(item.id) { mutableStateOf(false) }
+    var boxSize by remember(item.id) { mutableStateOf(IntSize.Zero) }
+    var progress by remember(item.id) { mutableFloatStateOf(0f) }
+
+    // Target points along the real glyph outline + which ones the child has reached.
+    val targets = remember(item.character, boxSize) { glyphTargetPoints(item.character, boxSize.width, boxSize.height) }
+    val hit = remember(item.id, targets) { BooleanArray(targets.size) }
+    var hitCount by remember(item.id, targets) { mutableIntStateOf(0) }
+
+    val tolerance = remember(boxSize) { (boxSize.width * 0.085f).coerceAtLeast(45f) } // generous for little fingers
+    val requiredFraction = 0.75f // trace ~3/4 of the shape to win — forgiving but real
+
+    val scale by animateFloatAsState(if (completed) 1.15f else 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "TracingScale")
+
+    fun registerTouch(o: Offset) {
+        if (targets.isEmpty()) return
+        var changed = false
+        for (i in targets.indices) {
+            if (!hit[i]) {
+                val dx = targets[i].x - o.x
+                val dy = targets[i].y - o.y
+                if (dx * dx + dy * dy <= tolerance * tolerance) { hit[i] = true; changed = true }
+            }
+        }
+        if (changed) {
+            var c = 0
+            for (h in hit) if (h) c++
+            hitCount = c
+            progress = c.toFloat() / targets.size
+            if (progress >= requiredFraction) completed = true
+        }
+    }
+
+    // Fire completion (with a celebratory beat) once enough of the shape is traced.
+    LaunchedEffect(completed) {
+        if (completed) {
+            progress = 1f
+            try { view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS) } catch (e: Exception) {}
+            delay(500)
+            onComplete()
+        }
+    }
+
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 20.dp)) {
         Text("🎨 نِشانه جادویی", fontSize = 30.sp, fontWeight = FontWeight.Black, color = DeepOcean)
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Box(
             modifier = Modifier
-                .size(280.dp)
+                .size(300.dp)
                 .scale(scale)
                 .background(
                     brush = Brush.radialGradient(listOf(Color.White, PastelGreen.copy(alpha = 0.1f))),
                     shape = CircleShape
                 )
-                .border(6.dp, PastelGreen, CircleShape)
-                .shadow(if (isTouched) 30.dp else 10.dp, CircleShape)
-                .clickable { 
-                    isTouched = true
-                    onComplete() 
+                .border(6.dp, if (completed) MangoOrange else PastelGreen, CircleShape)
+                .shadow(if (completed) 30.dp else 10.dp, CircleShape)
+                .clip(CircleShape)
+                .onGloballyPositioned { boxSize = it.size }
+                .pointerInput(item.id) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            if (!completed) {
+                                stroke.add(offset)
+                                registerTouch(offset)
+                            }
+                        },
+                        onDrag = { change, _ ->
+                            if (!completed) {
+                                change.consume()
+                                stroke.add(change.position)
+                                registerTouch(change.position)
+                            }
+                        }
+                    )
                 },
             contentAlignment = Alignment.Center
         ) {
-            Text(item.character, fontSize = 160.sp, fontWeight = FontWeight.Black, color = PastelGreen)
-            
-            // Sparkle effect placeholder
-            if (isTouched) {
-                Text("✨", modifier = Modifier.align(Alignment.TopEnd).offset(x = (-40).dp, y = 40.dp), fontSize = 40.sp)
-                Text("⭐", modifier = Modifier.align(Alignment.BottomStart).offset(x = 40.dp, y = (-40).dp), fontSize = 30.sp)
+            // Faint full glyph so the child always sees the whole letter to aim for.
+            Text(
+                item.character,
+                fontSize = 175.sp,
+                fontWeight = FontWeight.Black,
+                color = (if (completed) MangoOrange else PastelGreen).copy(alpha = if (completed) 0.9f else 0.22f)
+            )
+
+            Canvas(modifier = Modifier.matchParentSize()) {
+                // Guide dots along the letter's outline: faint until traced, then orange.
+                if (!completed) {
+                    targets.forEachIndexed { i, p ->
+                        drawCircle(
+                            color = if (hit[i]) MangoOrange else DeepOcean.copy(alpha = 0.25f),
+                            radius = if (hit[i]) 9f else 6f,
+                            center = p
+                        )
+                    }
+                }
+                // The child's crayon stroke.
+                for (i in 1 until stroke.size) {
+                    drawLine(
+                        color = MangoOrange,
+                        start = stroke[i - 1],
+                        end = stroke[i],
+                        strokeWidth = 30f,
+                        cap = StrokeCap.Round
+                    )
+                }
+            }
+
+            if (completed) {
+                Text("✨", modifier = Modifier.align(Alignment.TopEnd).offset(x = (-40).dp, y = 40.dp), fontSize = 44.sp)
+                Text("⭐", modifier = Modifier.align(Alignment.BottomStart).offset(x = 40.dp, y = (-40).dp), fontSize = 34.sp)
             }
         }
-        Spacer(modifier = Modifier.height(32.dp))
-        Text("برای شروعِ جادو، روی نشانه بزن!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = DeepOcean.copy(alpha = 0.7f))
+        Spacer(modifier = Modifier.height(20.dp))
+        // Slim progress bar so the child sees the magic "filling up" as they trace.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.6f)
+                .height(12.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(PastelGreen.copy(alpha = 0.2f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress.coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .background(MangoOrange, RoundedCornerShape(6.dp))
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            if (completed) "آفرین! نِشانه رو کامل کشیدی! ✨" else "نقطه‌ها رو با انگشتت دنبال کن!",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = DeepOcean.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+/**
+ * Image-pick recognition: the child hears/sees the word and taps the matching picture among
+ * choices. Reinforces word→meaning. Pictures come from the shared emoji map, so no art assets.
+ */
+@Composable
+fun WordRecognitionUI(
+    item: com.github.opscalehub.chistanland.data.LearningItem,
+    options: List<com.github.opscalehub.chistanland.data.LearningItem>,
+    enabled: Boolean,
+    onPick: (com.github.opscalehub.chistanland.data.LearningItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.padding(top = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("📷 کدوم تصویره؟", fontSize = 28.sp, fontWeight = FontWeight.Black, color = DeepOcean)
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // The target word (written), so the child links the heard word to its letters.
+        Card(
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(3.dp, SkyBlue.copy(alpha = 0.3f)),
+            modifier = Modifier.shadow(10.dp, RoundedCornerShape(28.dp))
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp)
+            ) {
+                Text(item.word, fontSize = 40.sp, fontWeight = FontWeight.Black, color = SkyBlue)
+                Spacer(modifier = Modifier.width(10.dp))
+                Icon(Icons.Default.PlayArrow, null, tint = MangoOrange, modifier = Modifier.size(30.dp))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(36.dp))
+
+        // Picture choices — tap the one that matches the word.
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            options.forEach { option ->
+                Card(
+                    shape = RoundedCornerShape(28.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = BorderStroke(3.dp, PastelGreen.copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .size(96.dp)
+                        .shadow(8.dp, RoundedCornerShape(28.dp))
+                        .clickable(enabled = enabled) { onPick(option) }
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Text(getEmojiForWord(option.word), fontSize = 56.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Shows a letter's four positional forms (isolated / initial / medial / final) so the child
+ * learns that the *same* letter changes shape when it joins its neighbours — the single
+ * hardest part of reading Persian. Forms are produced with zero-width joiners (U+200D), so
+ * the font renders the correct shape; non-connecting letters (ا د ر ز و …) naturally show
+ * little change, which is itself correct.
+ */
+@Composable
+fun LetterFormsStrip(letter: String) {
+    val zwj = "\u200D" // zero-width joiner: makes the font render initial/medial/final shapes
+    val forms = listOf(
+        "تنها" to letter,
+        "آغاز" to "$letter$zwj",
+        "میانه" to "$zwj$letter$zwj",
+        "پایان" to "$zwj$letter"
+    )
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("این نِشانه چه شکل‌هایی داره؟", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = DeepOcean.copy(alpha = 0.6f))
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            forms.forEach { (label, glyph) ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = SkyBlue.copy(alpha = 0.12f),
+                        border = BorderStroke(2.dp, SkyBlue.copy(alpha = 0.35f))
+                    ) {
+                        Box(modifier = Modifier.size(58.dp), contentAlignment = Alignment.Center) {
+                            Text(glyph, fontSize = 34.sp, fontWeight = FontWeight.Black, color = DeepOcean)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(label, fontSize = 12.sp, color = DeepOcean.copy(alpha = 0.55f), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
     }
 }
 
@@ -379,27 +652,31 @@ fun WordDisplay(
     activityType: LearningViewModel.ActivityType,
     missingCharIndex: Int,
     onPositioned: (Offset, IntSize) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    newLetter: String = ""
 ) {
     Row(
         modifier = modifier.onGloballyPositioned { onPositioned(it.positionInRoot(), it.size) },
-        horizontalArrangement = Arrangement.Center, 
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         targetWord.forEachIndexed { index, char ->
             val isMissing = activityType == LearningViewModel.ActivityType.MISSING_LETTER && index == missingCharIndex
             val status = charStatus.getOrNull(index)
             val isTyped = index < typedText.length || (activityType == LearningViewModel.ActivityType.MISSING_LETTER && !isMissing)
-            
+            // The newly-introduced letter is highlighted in red inside the word (pedagogical cue).
+            val isNewLetter = newLetter.isNotEmpty() && char.toString() == newLetter && status == null && !isMissing
+
             val color = when {
                 status == true -> PastelGreen
                 status == false -> Color.Red
                 isMissing -> MangoOrange
+                isNewLetter -> Color(0xFFE53935)
                 else -> SkyBlue.copy(alpha = 0.3f)
             }
             
             val displayText = if (isMissing && !isTyped) "?" else char.toString()
-            val textAlpha = if (isTyped) 1f else 0.5f
+            val textAlpha = if (isTyped || isNewLetter) 1f else 0.5f
             val scale by animateFloatAsState(if (isTyped) 1.25f else 1f, label = "charScale")
             
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 6.dp)) {
@@ -508,8 +785,39 @@ fun SuccessFestivalOverlay() {
 
 fun getEmojiForWord(word: String): String {
     return when(word) {
-        "آ" -> "🌟"; "آب" -> "💧"; "باد" -> "🌬️"; "بام" -> "🏠"; "بار" -> "🍎" 
-        "سبد" -> "🧺"; "بابا" -> "🧔"; "نان" -> "🍞"; "باز" -> "🦅"; "دست" -> "🖐️"; "درخت" -> "🌳"; "روباه" -> "🦊"; "ستاره" -> "⭐"; "مادر" -> "👩"; "توت" -> "🍓"; "زرافه" -> "🦒"
+        // زنجیره یادگیری ۳۲ حرفی (Concrete V2.1) — هر کلمه یک تصویر ذهنی روشن
+        "آ" -> "🅰️"
+        "بابا" -> "🧔"
+        "باد" -> "🌬️"
+        "بام" -> "🏠"
+        "آرد" -> "🌾"
+        "بازار" -> "🏪"
+        "دود" -> "💨"
+        "سبد" -> "🧺"
+        "نان" -> "🍞"
+        "تاب" -> "🛝"
+        "سینی" -> "🍽️"
+        "آش" -> "🍲"
+        "کوه" -> "⛰️"
+        "توپ" -> "⚽"
+        "شاخ" -> "🦌"
+        "برف" -> "❄️"
+        "قند" -> "🍬"
+        "گل" -> "🌷"
+        "کارد" -> "🔪"
+        "سگ" -> "🐕"
+        "چادر" -> "⛺"
+        "جوجه" -> "🐤"
+        "حوله" -> "🧺"
+        "عروسک" -> "🧸"
+        "غار" -> "🕳️"
+        "طناب" -> "🪢"
+        "صابون" -> "🧼"
+        "وضو" -> "🚰"
+        "ظرف" -> "🍽️"
+        "ذره‌بین" -> "🔍"
+        "مثلث" -> "🔺"
+        "ژله" -> "🍮"
         else -> "🌟"
     }
 }

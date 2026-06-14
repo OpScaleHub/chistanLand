@@ -9,6 +9,8 @@
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <!-- AvaCore: our dedicated offline Persian neural TTS engine -->
+        <package android:name="com.github.opscalehub.avacore" />
     </queries>
 
     <application

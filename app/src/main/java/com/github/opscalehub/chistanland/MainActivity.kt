@@ -24,6 +24,7 @@ import com.github.opscalehub.chistanland.ui.screens.HomeScreen
 import com.github.opscalehub.chistanland.ui.screens.IslandMapScreen
 import com.github.opscalehub.chistanland.ui.screens.LearningSessionScreen
 import com.github.opscalehub.chistanland.ui.screens.ParentDashboardScreen
+import com.github.opscalehub.chistanland.ui.screens.StickerAlbumScreen
 import com.github.opscalehub.chistanland.ui.theme.ChistanLandTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -98,9 +99,18 @@ fun ChistanApp(viewModel: LearningViewModel) {
                 onOpenParentPanel = {
                     navController.navigate("parent")
                 },
+                onOpenStickers = {
+                    navController.navigate("stickers")
+                },
                 onBack = {
                     navController.popBackStack()
                 }
+            )
+        }
+        composable("stickers") {
+            StickerAlbumScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
             )
         }
         composable("learning") {
