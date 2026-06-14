@@ -367,7 +367,7 @@ fun StoryModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, isGen
  * child followed the *letter's real shape* — not just that they covered screen area.
  * Works for all 32 letters with no per-letter art assets.
  */
-private fun glyphTargetPoints(character: String, widthPx: Int, heightPx: Int): List<Offset> {
+private fun glyphContours(character: String, widthPx: Int, heightPx: Int): List<List<Offset>> {
     if (widthPx <= 0 || heightPx <= 0 || character.isBlank()) return emptyList()
     val paint = AndroidPaint(AndroidPaint.ANTI_ALIAS_FLAG).apply {
         typeface = Typeface.DEFAULT_BOLD
@@ -383,19 +383,23 @@ private fun glyphTargetPoints(character: String, widthPx: Int, heightPx: Int): L
     val path = AndroidPath()
     paint.getTextPath(character, 0, character.length, baseX, baseY, path)
 
+    // Each contour is a separate piece of the letter (e.g. the body of «ب» and its dot below).
+    // We must trace every piece, so we keep them grouped rather than flattened.
     val pm = PathMeasure(path, false)
     val step = (heightPx * 0.035f).coerceAtLeast(8f) // ~28 samples down the glyph height
-    val out = mutableListOf<Offset>()
+    val contours = mutableListOf<List<Offset>>()
     val pos = FloatArray(2)
     do {
         val len = pm.length
+        val pts = mutableListOf<Offset>()
         var d = 0f
         while (d <= len) {
-            if (pm.getPosTan(d, pos, null)) out.add(Offset(pos[0], pos[1]))
+            if (pm.getPosTan(d, pos, null)) pts.add(Offset(pos[0], pos[1]))
             d += step
         }
+        if (pts.isNotEmpty()) contours.add(pts)
     } while (pm.nextContour())
-    return out
+    return contours
 }
 
 /**
@@ -413,32 +417,51 @@ fun TracingModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, onC
     var boxSize by remember(item.id) { mutableStateOf(IntSize.Zero) }
     var progress by remember(item.id) { mutableFloatStateOf(0f) }
 
-    // Target points along the real glyph outline + which ones the child has reached.
-    val targets = remember(item.character, boxSize) { glyphTargetPoints(item.character, boxSize.width, boxSize.height) }
-    val hit = remember(item.id, targets) { BooleanArray(targets.size) }
-    var hitCount by remember(item.id, targets) { mutableIntStateOf(0) }
+    // Target points grouped by contour (each separate piece of the letter, e.g. body + dot).
+    val contours = remember(item.character, boxSize) { glyphContours(item.character, boxSize.width, boxSize.height) }
+    val targets = remember(contours) { contours.flatten() } // flat list for drawing
+    val hit = remember(item.id, contours) { contours.map { BooleanArray(it.size) } }
+    var hitVersion by remember(item.id, contours) { mutableIntStateOf(0) } // bumps to trigger redraw
 
-    val tolerance = remember(boxSize) { (boxSize.width * 0.085f).coerceAtLeast(45f) } // generous for little fingers
-    val requiredFraction = 0.75f // trace ~3/4 of the shape to win — forgiving but real
+    val tolerance = remember(boxSize) { (boxSize.width * 0.07f).coerceAtLeast(38f) } // tighter: must hug the shape
+    val perContourFraction = 0.7f // EVERY piece (incl. the dot) must be ~70% traced — defeats stray scribbles
 
     val scale by animateFloatAsState(if (completed) 1.15f else 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "TracingScale")
 
+    fun isHit(globalIndex: Int): Boolean {
+        var idx = globalIndex
+        for (c in contours.indices) {
+            if (idx < contours[c].size) return hit[c][idx]
+            idx -= contours[c].size
+        }
+        return false
+    }
+
     fun registerTouch(o: Offset) {
-        if (targets.isEmpty()) return
+        if (contours.isEmpty()) return
         var changed = false
-        for (i in targets.indices) {
-            if (!hit[i]) {
-                val dx = targets[i].x - o.x
-                val dy = targets[i].y - o.y
-                if (dx * dx + dy * dy <= tolerance * tolerance) { hit[i] = true; changed = true }
+        val tol2 = tolerance * tolerance
+        for (c in contours.indices) {
+            val pts = contours[c]
+            for (i in pts.indices) {
+                if (!hit[c][i]) {
+                    val dx = pts[i].x - o.x
+                    val dy = pts[i].y - o.y
+                    if (dx * dx + dy * dy <= tol2) { hit[c][i] = true; changed = true }
+                }
             }
         }
         if (changed) {
-            var c = 0
-            for (h in hit) if (h) c++
-            hitCount = c
-            progress = c.toFloat() / targets.size
-            if (progress >= requiredFraction) completed = true
+            hitVersion++
+            var totalHit = 0; var total = 0
+            var allContoursCovered = true
+            for (c in contours.indices) {
+                val cHits = hit[c].count { it }
+                totalHit += cHits; total += contours[c].size
+                if (cHits.toFloat() / contours[c].size < perContourFraction) allContoursCovered = false
+            }
+            progress = if (total == 0) 0f else totalHit.toFloat() / total
+            if (allContoursCovered) completed = true
         }
     }
 
@@ -495,12 +518,14 @@ fun TracingModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, onC
             )
 
             Canvas(modifier = Modifier.matchParentSize()) {
+                hitVersion // read so the canvas redraws as dots get covered
                 // Guide dots along the letter's outline: faint until traced, then orange.
                 if (!completed) {
                     targets.forEachIndexed { i, p ->
+                        val h = isHit(i)
                         drawCircle(
-                            color = if (hit[i]) MangoOrange else DeepOcean.copy(alpha = 0.25f),
-                            radius = if (hit[i]) 9f else 6f,
+                            color = if (h) MangoOrange else DeepOcean.copy(alpha = 0.25f),
+                            radius = if (h) 9f else 6f,
                             center = p
                         )
                     }
@@ -786,7 +811,18 @@ fun SuccessFestivalOverlay() {
 fun getEmojiForWord(word: String): String {
     return when(word) {
         // زنجیره یادگیری ۳۲ حرفی (Concrete V2.1) — هر کلمه یک تصویر ذهنی روشن
-        "آ" -> "🅰️"
+        // «آ» شیء ملموسی ندارد؛ خودِ نشانه نمایش داده می‌شود (نه حرف انگلیسی A).
+        "آ" -> "آ"
+        // واژه‌های نمونه (تمرین عمیق‌تر با حروفِ یادگرفته‌شده)
+        "آب" -> "💧"
+        "بادام" -> "🌰"
+        "مار" -> "🐍"
+        "بز" -> "🐐"
+        "رود" -> "🏞️"
+        "اسب" -> "🐴"
+        "آسمان" -> "☁️"
+        "توت" -> "🫐"
+        "دریا" -> "🌊"
         "بابا" -> "🧔"
         "باد" -> "🌬️"
         "بام" -> "🏠"

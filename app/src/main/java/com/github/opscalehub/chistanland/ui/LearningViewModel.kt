@@ -85,9 +85,31 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val _recognitionOptions = MutableStateFlow<List<LearningItem>>(emptyList())
     val recognitionOptions: StateFlow<List<LearningItem>> = _recognitionOptions.asStateFlow()
 
-    private val sessionQueue = mutableListOf<LearningItem>()
+    // A queued round. `scores = false` means an extra practice word that gives full reward
+    // feedback (sparkles, streak, sticker) but does NOT advance the letter's level — so more
+    // examples deepen exposure without speeding up mastery.
+    private data class QueueEntry(val item: LearningItem, val scores: Boolean)
+    private val sessionQueue = mutableListOf<QueueEntry>()
+    private var currentScores = true
 
-    enum class ActivityType { 
+    /**
+     * Extra concrete example words per letter, each built ONLY from letters introduced at or
+     * before that step (vocabulary control / the +1 principle). They are practiced as deeper,
+     * non-scoring exposure alongside the main word. Extend this map to slow the pace further.
+     */
+    private val letterExamples: Map<String, List<String>> = mapOf(
+        "ب" to listOf("آب"),
+        "م" to listOf("بادام"),
+        "ر" to listOf("مار"),
+        "ز" to listOf("بز"),
+        "و" to listOf("رود"),
+        "س" to listOf("اسب"),
+        "ن" to listOf("آسمان"),
+        "ت" to listOf("توت"),
+        "ی" to listOf("دریا")
+    )
+
+    enum class ActivityType {
         PHONICS_INTRO,      
         MISSING_LETTER,     
         SPELLING,           
@@ -157,20 +179,27 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
 
     fun startLearningSession(mainItem: LearningItem) {
         recordPlayToday()
+        _isReviewMode.value = false
         sessionQueue.clear()
-        sessionQueue.add(mainItem)
-        val extraItems = allItems.value
+        // 1) The main word — this is the one that advances the letter's level.
+        sessionQueue.add(QueueEntry(mainItem, scores = true))
+        // 2) Extra example words for the same letter — deeper, non-scoring practice.
+        letterExamples[mainItem.character].orEmpty().forEach { example ->
+            sessionQueue.add(QueueEntry(mainItem.copy(word = example), scores = false))
+        }
+        // 3) One previously-mastered letter interleaved as light review (non-scoring).
+        allItems.value
             .filter { it.id != mainItem.id && it.isMastered }
             .shuffled()
-            .take(2)
-        sessionQueue.addAll(extraItems)
+            .take(1)
+            .forEach { sessionQueue.add(QueueEntry(it, scores = false)) }
         startNextInQueue()
     }
 
     fun startReviewSession(items: List<LearningItem>, onStarted: () -> Unit) {
         recordPlayToday()
         sessionQueue.clear()
-        sessionQueue.addAll(items.shuffled().take(5))
+        sessionQueue.addAll(items.shuffled().take(5).map { QueueEntry(it, scores = true) })
         _isReviewMode.value = true
         startNextInQueue()
         onStarted()
@@ -182,8 +211,9 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
             viewModelScope.launch { _uiEvent.emit(UiEvent.SessionComplete) }
             return
         }
-        val nextItem = sessionQueue.removeAt(0)
-        startLearning(nextItem, isReview = _isReviewMode.value)
+        val next = sessionQueue.removeAt(0)
+        currentScores = next.scores
+        startLearning(next.item, isReview = _isReviewMode.value)
     }
 
     fun playHintInstruction() {
@@ -351,7 +381,9 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         narrativeJob?.cancel()
         narrativeJob = viewModelScope.launch {
             val item = _currentItem.value ?: return@launch
-            repository.updateProgress(item, isCorrect)
+            // Practice/example rounds (scores = false) still reward the child but never change
+            // the stored level — extra examples deepen learning without speeding up mastery.
+            if (currentScores) repository.updateProgress(item, isCorrect)
             if (isCorrect) {
                 _streak.value += 1
                 launch { _uiEvent.emit(UiEvent.Success) }
