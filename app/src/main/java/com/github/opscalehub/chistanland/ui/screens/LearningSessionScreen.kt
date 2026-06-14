@@ -248,7 +248,9 @@ fun LearningSessionScreen(
                                 else -> {
                                     WordCard(
                                         item = item,
-                                        onPlaySound = { if (!isTransitioning) viewModel.startLearning(item) },
+                                        // "بشنو" replays the audio for the CURRENT exercise — it must not
+                                        // restart/re-randomize the activity (which startLearning would do).
+                                        onPlaySound = { if (!isTransitioning) viewModel.playHintInstruction() },
                                         modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
                                     )
 
