@@ -439,6 +439,18 @@ private val letterStrokeData: Map<String, List<List<Offset>>> = mapOf(
     "آ" to listOf(
         listOf(Offset(0.51f, 0.30f), Offset(0.51f, 0.58f)),
         listOf(Offset(0.43f, 0.27f), Offset(0.57f, 0.27f))
+    ),
+    // ر (re): one stroke — down the right side, then curve left around the bowl into the tail.
+    "ر" to listOf(
+        listOf(Offset(0.56f, 0.43f), Offset(0.57f, 0.53f), Offset(0.55f, 0.62f), Offset(0.50f, 0.69f), Offset(0.45f, 0.72f), Offset(0.40f, 0.66f))
+    ),
+    // د (dal): one stroke — top tip, down the right side, then the foot sweeping left along the baseline.
+    "د" to listOf(
+        listOf(Offset(0.54f, 0.46f), Offset(0.57f, 0.52f), Offset(0.56f, 0.59f), Offset(0.49f, 0.61f), Offset(0.43f, 0.60f))
+    ),
+    // و (vav): one stroke — round head loop (clockwise from the top), then a short tail down-left.
+    "و" to listOf(
+        listOf(Offset(0.50f, 0.49f), Offset(0.58f, 0.56f), Offset(0.56f, 0.64f), Offset(0.49f, 0.67f), Offset(0.43f, 0.63f), Offset(0.43f, 0.55f), Offset(0.49f, 0.62f), Offset(0.45f, 0.71f))
     )
 )
 
