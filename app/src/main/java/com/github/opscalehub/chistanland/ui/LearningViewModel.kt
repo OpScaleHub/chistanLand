@@ -106,15 +106,40 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
      * non-scoring exposure alongside the main word. Extend this map to slow the pace further.
      */
     private val letterExamples: Map<String, List<String>> = mapOf(
+        // Early letters (steps 2–11): a second concrete word slows the youngest learner's pace.
+        // Every word is vocabulary-controlled — it uses ONLY letters introduced at or before its step.
         "ب" to listOf("آب"),
-        "م" to listOf("بادام"),
-        "ر" to listOf("مار"),
+        "م" to listOf("بادام", "آدم"),
+        "ر" to listOf("مار", "مادر"),
         "ز" to listOf("بز"),
-        "و" to listOf("رود"),
-        "س" to listOf("اسب"),
-        "ن" to listOf("آسمان"),
-        "ت" to listOf("توت"),
-        "ی" to listOf("دریا")
+        "و" to listOf("رود", "بازو"),
+        "س" to listOf("اسب", "سوسمار"),
+        "ن" to listOf("آسمان", "نردبان"),
+        "ت" to listOf("توت", "دست"),
+        "ی" to listOf("دریا", "میز"),
+        // Later letters (steps 12–32): by here almost the whole alphabet is available,
+        // so each gets one clear, concrete example built only from already-known letters.
+        "ش" to listOf("موش"),
+        "ه" to listOf("ماه"),
+        "پ" to listOf("پروانه"),
+        "خ" to listOf("خرس"),
+        "ف" to listOf("آفتاب"),
+        "ق" to listOf("قاشق"),
+        "ل" to listOf("فیل"),
+        "ک" to listOf("کفش"),
+        "گ" to listOf("گاو"),
+        "چ" to listOf("چتر"),
+        "ج" to listOf("جنگل"),
+        "ح" to listOf("حلزون"),
+        "ع" to listOf("عینک"),
+        "غ" to listOf("مرغ"),
+        "ط" to listOf("طوطی"),
+        "ص" to listOf("صدف"),
+        "ض" to listOf("حوض"),
+        "ذ" to listOf("کاغذ"),
+        "ژ" to listOf("ژاکت")
+        // ظ (step 29) and ث (step 31) intentionally omitted — no concrete, child-friendly
+        // Persian word exists using only the letters known by that step; their main word stands alone.
     )
 
     enum class ActivityType {
