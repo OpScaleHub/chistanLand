@@ -497,9 +497,9 @@ private val letterStrokeData: Map<String, List<List<Offset>>> = mapOf(
         listOf(Offset(0.51f, 0.44f), Offset(0.53f, 0.44f)),
         listOf(Offset(0.57f, 0.44f), Offset(0.59f, 0.44f))
     ),
-    // ه (he): isolated loop/knot, one stroke (calibrate against glyph).
+    // ه (he): isolated loop/knot, one stroke (clockwise around the egg-shaped glyph).
     "ه" to listOf(
-        listOf(Offset(0.50f, 0.46f), Offset(0.58f, 0.52f), Offset(0.54f, 0.62f), Offset(0.45f, 0.62f), Offset(0.42f, 0.52f), Offset(0.50f, 0.47f))
+        listOf(Offset(0.50f, 0.48f), Offset(0.57f, 0.54f), Offset(0.55f, 0.62f), Offset(0.49f, 0.64f), Offset(0.43f, 0.60f), Offset(0.44f, 0.52f), Offset(0.50f, 0.48f))
     ),
     // پ (pe): be bowl, then three dots below.
     "پ" to listOf(
@@ -515,14 +515,14 @@ private val letterStrokeData: Map<String, List<List<Offset>>> = mapOf(
     ),
     // ف (fe): small head loop then a bowl to the left, one dot above the head.
     "ف" to listOf(
-        listOf(Offset(0.57f, 0.47f), Offset(0.62f, 0.52f), Offset(0.57f, 0.57f), Offset(0.52f, 0.54f), Offset(0.54f, 0.49f), Offset(0.50f, 0.60f), Offset(0.42f, 0.63f), Offset(0.37f, 0.60f)),
-        listOf(Offset(0.56f, 0.40f), Offset(0.58f, 0.40f))
+        listOf(Offset(0.52f, 0.45f), Offset(0.57f, 0.50f), Offset(0.52f, 0.55f), Offset(0.48f, 0.52f), Offset(0.51f, 0.46f), Offset(0.48f, 0.57f), Offset(0.41f, 0.62f), Offset(0.36f, 0.59f)),
+        listOf(Offset(0.50f, 0.40f), Offset(0.52f, 0.40f))
     ),
     // ق (qaf): head then a deep round bowl below the baseline, two dots above.
     "ق" to listOf(
-        listOf(Offset(0.57f, 0.47f), Offset(0.62f, 0.52f), Offset(0.57f, 0.57f), Offset(0.52f, 0.53f), Offset(0.57f, 0.48f), Offset(0.55f, 0.60f), Offset(0.50f, 0.72f), Offset(0.42f, 0.72f), Offset(0.40f, 0.60f)),
-        listOf(Offset(0.51f, 0.40f), Offset(0.53f, 0.40f)),
-        listOf(Offset(0.59f, 0.40f), Offset(0.61f, 0.40f))
+        listOf(Offset(0.52f, 0.47f), Offset(0.57f, 0.52f), Offset(0.52f, 0.57f), Offset(0.47f, 0.53f), Offset(0.52f, 0.48f), Offset(0.52f, 0.60f), Offset(0.48f, 0.72f), Offset(0.41f, 0.72f), Offset(0.39f, 0.61f)),
+        listOf(Offset(0.45f, 0.41f), Offset(0.47f, 0.41f)),
+        listOf(Offset(0.53f, 0.41f), Offset(0.55f, 0.41f))
     ),
     // ل (lam): tall stroke from the top, curving into a bowl at the bottom, one stroke.
     "ل" to listOf(
