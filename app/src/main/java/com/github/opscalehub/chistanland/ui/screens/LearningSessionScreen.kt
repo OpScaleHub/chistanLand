@@ -419,13 +419,89 @@ private fun glyphContours(character: String, widthPx: Int, heightPx: Int): List<
 }
 
 /**
+ * Hand-authored CENTERLINE stroke paths, in WRITING ORDER and direction. Each entry is an
+ * ordered list of strokes; each stroke is a polyline of NORMALIZED (0..1) points over the
+ * tracing box, in the order/direction a child should draw it (start → end). A child must
+ * complete stroke 0 before stroke 1, following each from its start dot — so this teaches real
+ * penmanship (order + direction), not just shape coverage.
+ *
+ * Letters NOT in this map fall back to outline-coverage tracing (see [glyphContours] /
+ * [CoverageTracingSurface]) — so adding a letter is purely additive and never regresses others.
+ *
+ * AUTHORING NOTE (important): coordinates must sit on top of the faint guide glyph (a centered
+ * Compose Text). Add a letter ONLY after verifying on-device that its polyline overlays the
+ * rendered glyph — a mismatched centerline would teach the WRONG shape. Persian is written
+ * right-to-left; most isolated letters are one body stroke, with dots/marks as later strokes.
+ */
+private val letterStrokeData: Map<String, List<List<Offset>>> = mapOf(
+    // آ (alef-madda): 1) the tall body, drawn top → bottom; 2) the madda "hat" on top.
+    // Calibrated on-device against the rendered glyph (OnePlus Nord, default font).
+    "آ" to listOf(
+        listOf(Offset(0.51f, 0.30f), Offset(0.51f, 0.58f)),
+        listOf(Offset(0.43f, 0.27f), Offset(0.57f, 0.27f))
+    )
+)
+
+/** Euclidean distance between two points. */
+private fun dist(a: Offset, b: Offset): Float {
+    val dx = a.x - b.x; val dy = a.y - b.y
+    return kotlin.math.sqrt(dx * dx + dy * dy)
+}
+
+/** Resample a polyline into points spaced ~`spacing` px apart (keeps first & last). */
+private fun resamplePolyline(poly: List<Offset>, spacing: Float): List<Offset> {
+    if (poly.size < 2) return poly
+    val out = mutableListOf(poly.first())
+    var prev = poly.first()
+    var carry = 0f
+    for (i in 1 until poly.size) {
+        var segStart = prev
+        val segEnd = poly[i]
+        var segLen = dist(segStart, segEnd)
+        while (segLen > 0f && carry + segLen >= spacing) {
+            val t = (spacing - carry) / segLen
+            val np = Offset(segStart.x + (segEnd.x - segStart.x) * t, segStart.y + (segEnd.y - segStart.y) * t)
+            out.add(np)
+            segStart = np
+            segLen = dist(segStart, segEnd)
+            carry = 0f
+        }
+        carry += segLen
+        prev = segEnd
+    }
+    if (out.last() != poly.last()) out.add(poly.last())
+    return out
+}
+
+/** Scale normalized (0..1) authored strokes to box pixels and resample each evenly. */
+private fun scaledStrokes(strokes: List<List<Offset>>, w: Int, h: Int): List<List<Offset>> {
+    if (w == 0 || h == 0) return emptyList()
+    val spacing = (h * 0.035f).coerceAtLeast(8f)
+    return strokes.map { poly -> resamplePolyline(poly.map { Offset(it.x * w, it.y * h) }, spacing) }
+}
+
+/**
+ * Tracing entry point. Letters with hand-authored stroke data get the ordered, directional
+ * stroke-following experience; every other letter falls back to the forgiving outline-coverage
+ * tracer. This split keeps authoring incremental and risk-free.
+ */
+@Composable
+fun TracingModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, onComplete: () -> Unit) {
+    if (letterStrokeData.containsKey(item.character)) {
+        OrderedTracingSurface(item, letterStrokeData.getValue(item.character), onComplete)
+    } else {
+        CoverageTracingSurface(item, onComplete)
+    }
+}
+
+/**
  * Real finger-tracing with SHAPE accuracy. We extract the letter's outline into target
  * points and light each one up only when the finger passes near it (forgiving tolerance
  * for small hands). Progress = fraction of the letter's shape actually traced — so a
  * random scribble in empty space won't fill it; the child must follow the glyph.
  */
 @Composable
-fun TracingModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, onComplete: () -> Unit) {
+fun CoverageTracingSurface(item: com.github.opscalehub.chistanland.data.LearningItem, onComplete: () -> Unit) {
     val view = LocalView.current
     // remember(item.id): every state resets cleanly when the lesson advances to a new letter.
     val stroke = remember(item.id) { mutableStateListOf<Offset>() }
@@ -586,6 +662,140 @@ fun TracingModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, onC
             fontWeight = FontWeight.Bold,
             color = DeepOcean.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
+        )
+    }
+}
+
+/**
+ * Ordered, directional stroke-following for letters with authored centerline strokes.
+ * The child must trace stroke 0 from its start dot to its end, THEN stroke 1, and so on —
+ * advancing only in order (small look-ahead keeps fast dragging forgiving). A pulsing green
+ * dot marks where to start each stroke; finished strokes stay orange. This teaches writing
+ * order and direction, not just shape.
+ */
+@Composable
+fun OrderedTracingSurface(
+    item: com.github.opscalehub.chistanland.data.LearningItem,
+    authored: List<List<Offset>>,
+    onComplete: () -> Unit
+) {
+    val view = LocalView.current
+    val stroke = remember(item.id) { mutableStateListOf<Offset>() }
+    var completed by remember(item.id) { mutableStateOf(false) }
+    var boxSize by remember(item.id) { mutableStateOf(IntSize.Zero) }
+    var progress by remember(item.id) { mutableFloatStateOf(0f) }
+
+    val strokes = remember(item.character, boxSize) { scaledStrokes(authored, boxSize.width, boxSize.height) }
+    val totalPts = remember(strokes) { strokes.sumOf { it.size } }
+    var strokeIdx by remember(item.id, strokes) { mutableIntStateOf(0) }
+    var cursor by remember(item.id, strokes) { mutableIntStateOf(-1) } // furthest in-order index reached; -1 = not started
+    var version by remember(item.id, strokes) { mutableIntStateOf(0) }  // bumps to redraw the canvas
+
+    val tolerance = remember(boxSize) { (boxSize.width * 0.11f).coerceAtLeast(48f) } // forgiving for small hands
+    val lookahead = 4 // how far ahead along the stroke a single touch may advance the cursor
+
+    val scale by animateFloatAsState(if (completed) 1.15f else 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "OrderedTracingScale")
+    val startPulse by rememberInfiniteTransition(label = "startPulse").animateFloat(1f, 1.6f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "startPulseV")
+
+    fun registerTouch(o: Offset) {
+        if (completed || strokes.isEmpty() || strokeIdx >= strokes.size) return
+        val cur = strokes[strokeIdx]
+        val last = cur.size - 1
+        val tol2 = tolerance * tolerance
+        var best = cursor
+        var j = (cursor + 1).coerceAtLeast(0)
+        while (j <= minOf(cursor + lookahead, last)) {
+            val dx = cur[j].x - o.x; val dy = cur[j].y - o.y
+            if (dx * dx + dy * dy <= tol2) best = j
+            j++
+        }
+        if (best > cursor) {
+            cursor = best
+            version++
+            val donePts = (0 until strokeIdx).sumOf { strokes[it].size }
+            progress = if (totalPts == 0) 0f else (donePts + cursor + 1).toFloat() / totalPts
+            if (cursor >= last) {
+                if (strokeIdx >= strokes.size - 1) completed = true
+                else { strokeIdx++; cursor = -1 }
+            }
+        }
+    }
+
+    LaunchedEffect(completed) {
+        if (completed) {
+            progress = 1f
+            try { view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS) } catch (e: Exception) {}
+            delay(500)
+            onComplete()
+        }
+    }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 20.dp)) {
+        Text("🎨 نِشانه جادویی", fontSize = 30.sp, fontWeight = FontWeight.Black, color = DeepOcean)
+        Spacer(modifier = Modifier.height(24.dp))
+        Box(
+            modifier = Modifier
+                .size(300.dp)
+                .scale(scale)
+                .background(brush = Brush.radialGradient(listOf(Color.White, PastelGreen.copy(alpha = 0.1f))), shape = CircleShape)
+                .border(6.dp, if (completed) MangoOrange else PastelGreen, CircleShape)
+                .shadow(if (completed) 30.dp else 10.dp, CircleShape)
+                .clip(CircleShape)
+                .onGloballyPositioned { boxSize = it.size }
+                .pointerInput(item.id) {
+                    detectDragGestures(
+                        onDragStart = { offset -> if (!completed) { stroke.add(offset); registerTouch(offset) } },
+                        onDrag = { change, _ -> if (!completed) { change.consume(); stroke.add(change.position); registerTouch(change.position) } }
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            // Faint whole glyph so the child always sees the letter to aim for.
+            Text(item.character, fontSize = 175.sp, fontWeight = FontWeight.Black,
+                color = (if (completed) MangoOrange else PastelGreen).copy(alpha = if (completed) 0.9f else 0.22f))
+
+            Canvas(modifier = Modifier.matchParentSize()) {
+                version // read so the canvas redraws as the cursor advances
+                if (!completed) {
+                    strokes.forEachIndexed { s, pts ->
+                        when {
+                            s < strokeIdx -> pts.forEach { drawCircle(MangoOrange, 8f, it) } // finished stroke
+                            s == strokeIdx -> {
+                                pts.forEachIndexed { i, p ->
+                                    val done = i <= cursor
+                                    drawCircle(if (done) MangoOrange else DeepOcean.copy(alpha = 0.3f), if (done) 9f else 6f, p)
+                                }
+                                // Pulsing green "start here" marker on the next expected point.
+                                val nextIdx = (cursor + 1).coerceIn(0, pts.size - 1)
+                                drawCircle(PastelGreen, 7f * startPulse, pts[nextIdx])
+                                drawCircle(Color(0xFF2E7D32), 7f, pts[nextIdx])
+                            }
+                            else -> pts.forEach { drawCircle(DeepOcean.copy(alpha = 0.12f), 5f, it) } // upcoming stroke (faint)
+                        }
+                    }
+                }
+                for (i in 1 until stroke.size) {
+                    drawLine(MangoOrange, stroke[i - 1], stroke[i], strokeWidth = 30f, cap = StrokeCap.Round)
+                }
+            }
+
+            if (completed) {
+                Text("✨", modifier = Modifier.align(Alignment.TopEnd).offset(x = (-40).dp, y = 40.dp), fontSize = 44.sp)
+                Text("⭐", modifier = Modifier.align(Alignment.BottomStart).offset(x = 40.dp, y = (-40).dp), fontSize = 34.sp)
+            }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Box(modifier = Modifier.fillMaxWidth(0.6f).height(12.dp).clip(RoundedCornerShape(6.dp)).background(PastelGreen.copy(alpha = 0.2f))) {
+            Box(modifier = Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().background(MangoOrange, RoundedCornerShape(6.dp)))
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            when {
+                completed -> "آفرین! نِشانه رو کامل کشیدی! ✨"
+                strokes.size > 1 -> "از نقطه‌ی سبز شروع کن — خط ${strokeIdx + 1} از ${strokes.size}"
+                else -> "از نقطه‌ی سبز شروع کن و دنبالش کن!"
+            },
+            fontSize = 20.sp, fontWeight = FontWeight.Bold, color = DeepOcean.copy(alpha = 0.7f), textAlign = TextAlign.Center
         )
     }
 }
