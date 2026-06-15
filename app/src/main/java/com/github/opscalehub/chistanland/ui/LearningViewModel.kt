@@ -232,8 +232,11 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
         // 1) The main word — this is the one that advances the letter's level.
         sessionQueue.add(QueueEntry(mainItem, scores = true))
         // 2) Extra example words for the same letter — deeper, non-scoring practice.
-        letterExamples[mainItem.character].orEmpty().forEach { example ->
-            sessionQueue.add(QueueEntry(mainItem.copy(word = example), scores = false))
+        // Each gets a DISTINCT id (still derived from the main id, so the "p0" keyboard check
+        // holds): screens key their per-exercise state on item.id, so reusing the main id left
+        // a traced/typed exercise looking already-finished and ignoring touch on the next word.
+        letterExamples[mainItem.character].orEmpty().forEachIndexed { i, example ->
+            sessionQueue.add(QueueEntry(mainItem.copy(id = "${mainItem.id}_ex$i", word = example), scores = false))
         }
         // 3) One previously-mastered letter interleaved as light review (non-scoring).
         allItems.value
