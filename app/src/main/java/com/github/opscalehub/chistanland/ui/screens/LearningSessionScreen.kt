@@ -488,6 +488,120 @@ private val letterStrokeData: Map<String, List<List<Offset>>> = mapOf(
     // م (mim): round head loop then a tail descending below the baseline, one stroke.
     "م" to listOf(
         listOf(Offset(0.54f, 0.52f), Offset(0.58f, 0.56f), Offset(0.54f, 0.60f), Offset(0.49f, 0.57f), Offset(0.52f, 0.52f), Offset(0.51f, 0.62f), Offset(0.48f, 0.72f))
+    ),
+    // ── steps 12–32 ── (bodies follow standard order: body first, then dots; jim-family = top stroke→hook)
+    // ش (shin): sin body (three teeth into a bowl), then three dots above.
+    "ش" to listOf(
+        listOf(Offset(0.64f, 0.58f), Offset(0.61f, 0.52f), Offset(0.58f, 0.58f), Offset(0.54f, 0.52f), Offset(0.51f, 0.58f), Offset(0.47f, 0.52f), Offset(0.44f, 0.58f), Offset(0.40f, 0.63f), Offset(0.45f, 0.66f)),
+        listOf(Offset(0.45f, 0.44f), Offset(0.47f, 0.44f)),
+        listOf(Offset(0.51f, 0.44f), Offset(0.53f, 0.44f)),
+        listOf(Offset(0.57f, 0.44f), Offset(0.59f, 0.44f))
+    ),
+    // ه (he): isolated loop/knot, one stroke (calibrate against glyph).
+    "ه" to listOf(
+        listOf(Offset(0.50f, 0.46f), Offset(0.58f, 0.52f), Offset(0.54f, 0.62f), Offset(0.45f, 0.62f), Offset(0.42f, 0.52f), Offset(0.50f, 0.47f))
+    ),
+    // پ (pe): be bowl, then three dots below.
+    "پ" to listOf(
+        listOf(Offset(0.62f, 0.56f), Offset(0.55f, 0.62f), Offset(0.47f, 0.645f), Offset(0.40f, 0.645f), Offset(0.33f, 0.595f)),
+        listOf(Offset(0.41f, 0.72f), Offset(0.43f, 0.72f)),
+        listOf(Offset(0.47f, 0.72f), Offset(0.49f, 0.72f)),
+        listOf(Offset(0.53f, 0.72f), Offset(0.55f, 0.72f))
+    ),
+    // خ (khe): jim body (top stroke → hook below baseline), then one dot above.
+    "خ" to listOf(
+        listOf(Offset(0.38f, 0.46f), Offset(0.50f, 0.43f), Offset(0.60f, 0.45f), Offset(0.58f, 0.54f), Offset(0.50f, 0.63f), Offset(0.41f, 0.64f), Offset(0.36f, 0.56f)),
+        listOf(Offset(0.49f, 0.39f), Offset(0.51f, 0.39f))
+    ),
+    // ف (fe): small head loop then a bowl to the left, one dot above the head.
+    "ف" to listOf(
+        listOf(Offset(0.57f, 0.47f), Offset(0.62f, 0.52f), Offset(0.57f, 0.57f), Offset(0.52f, 0.54f), Offset(0.54f, 0.49f), Offset(0.50f, 0.60f), Offset(0.42f, 0.63f), Offset(0.37f, 0.60f)),
+        listOf(Offset(0.56f, 0.40f), Offset(0.58f, 0.40f))
+    ),
+    // ق (qaf): head then a deep round bowl below the baseline, two dots above.
+    "ق" to listOf(
+        listOf(Offset(0.57f, 0.47f), Offset(0.62f, 0.52f), Offset(0.57f, 0.57f), Offset(0.52f, 0.53f), Offset(0.57f, 0.48f), Offset(0.55f, 0.60f), Offset(0.50f, 0.72f), Offset(0.42f, 0.72f), Offset(0.40f, 0.60f)),
+        listOf(Offset(0.51f, 0.40f), Offset(0.53f, 0.40f)),
+        listOf(Offset(0.59f, 0.40f), Offset(0.61f, 0.40f))
+    ),
+    // ل (lam): tall stroke from the top, curving into a bowl at the bottom, one stroke.
+    "ل" to listOf(
+        listOf(Offset(0.56f, 0.30f), Offset(0.54f, 0.45f), Offset(0.53f, 0.58f), Offset(0.48f, 0.64f), Offset(0.40f, 0.62f))
+    ),
+    // ک (kaf): main stroke (down then a base to the right), plus the small inner mark.
+    "ک" to listOf(
+        listOf(Offset(0.46f, 0.32f), Offset(0.43f, 0.48f), Offset(0.42f, 0.60f), Offset(0.52f, 0.61f), Offset(0.62f, 0.59f)),
+        listOf(Offset(0.47f, 0.46f), Offset(0.56f, 0.40f))
+    ),
+    // گ (gaf): like kaf, with a second slash on top — three strokes.
+    "گ" to listOf(
+        listOf(Offset(0.46f, 0.32f), Offset(0.43f, 0.48f), Offset(0.42f, 0.60f), Offset(0.52f, 0.61f), Offset(0.62f, 0.59f)),
+        listOf(Offset(0.47f, 0.44f), Offset(0.58f, 0.38f)),
+        listOf(Offset(0.47f, 0.37f), Offset(0.58f, 0.31f))
+    ),
+    // چ (che): jim body, then three dots below.
+    "چ" to listOf(
+        listOf(Offset(0.38f, 0.46f), Offset(0.50f, 0.43f), Offset(0.60f, 0.45f), Offset(0.58f, 0.54f), Offset(0.50f, 0.63f), Offset(0.41f, 0.64f), Offset(0.36f, 0.56f)),
+        listOf(Offset(0.42f, 0.60f), Offset(0.44f, 0.60f)),
+        listOf(Offset(0.48f, 0.60f), Offset(0.50f, 0.60f)),
+        listOf(Offset(0.54f, 0.60f), Offset(0.56f, 0.60f))
+    ),
+    // ج (jim): jim body, then one dot below (inside the belly).
+    "ج" to listOf(
+        listOf(Offset(0.38f, 0.46f), Offset(0.50f, 0.43f), Offset(0.60f, 0.45f), Offset(0.58f, 0.54f), Offset(0.50f, 0.63f), Offset(0.41f, 0.64f), Offset(0.36f, 0.56f)),
+        listOf(Offset(0.47f, 0.58f), Offset(0.49f, 0.58f))
+    ),
+    // ح (he-jimi): jim body, no dots.
+    "ح" to listOf(
+        listOf(Offset(0.38f, 0.46f), Offset(0.50f, 0.43f), Offset(0.60f, 0.45f), Offset(0.58f, 0.54f), Offset(0.50f, 0.63f), Offset(0.41f, 0.64f), Offset(0.36f, 0.56f))
+    ),
+    // ع (ein): open head curl at top, then a bowl below the baseline, one stroke.
+    "ع" to listOf(
+        listOf(Offset(0.58f, 0.46f), Offset(0.50f, 0.42f), Offset(0.47f, 0.50f), Offset(0.55f, 0.53f), Offset(0.52f, 0.62f), Offset(0.43f, 0.70f), Offset(0.50f, 0.75f), Offset(0.58f, 0.69f))
+    ),
+    // غ (ghein): ein body, then one dot above.
+    "غ" to listOf(
+        listOf(Offset(0.58f, 0.46f), Offset(0.50f, 0.42f), Offset(0.47f, 0.50f), Offset(0.55f, 0.53f), Offset(0.52f, 0.62f), Offset(0.43f, 0.70f), Offset(0.50f, 0.75f), Offset(0.58f, 0.69f)),
+        listOf(Offset(0.54f, 0.39f), Offset(0.56f, 0.39f))
+    ),
+    // ط (ta): oval body, then a vertical ascender stroke upward — two strokes.
+    "ط" to listOf(
+        listOf(Offset(0.58f, 0.60f), Offset(0.50f, 0.64f), Offset(0.42f, 0.60f), Offset(0.50f, 0.56f), Offset(0.58f, 0.60f)),
+        listOf(Offset(0.57f, 0.58f), Offset(0.57f, 0.32f))
+    ),
+    // ص (sad): closed eye/loop on the right, then a bowl to the left, one stroke.
+    "ص" to listOf(
+        listOf(Offset(0.58f, 0.55f), Offset(0.62f, 0.60f), Offset(0.56f, 0.63f), Offset(0.52f, 0.59f), Offset(0.57f, 0.55f), Offset(0.50f, 0.63f), Offset(0.42f, 0.64f), Offset(0.36f, 0.60f))
+    ),
+    // ض (zad): sad body, then one dot above.
+    "ض" to listOf(
+        listOf(Offset(0.58f, 0.55f), Offset(0.62f, 0.60f), Offset(0.56f, 0.63f), Offset(0.52f, 0.59f), Offset(0.57f, 0.55f), Offset(0.50f, 0.63f), Offset(0.42f, 0.64f), Offset(0.36f, 0.60f)),
+        listOf(Offset(0.49f, 0.46f), Offset(0.51f, 0.46f))
+    ),
+    // ظ (za): ta body (oval + ascender), then one dot above.
+    "ظ" to listOf(
+        listOf(Offset(0.58f, 0.60f), Offset(0.50f, 0.64f), Offset(0.42f, 0.60f), Offset(0.50f, 0.56f), Offset(0.58f, 0.60f)),
+        listOf(Offset(0.57f, 0.58f), Offset(0.57f, 0.32f)),
+        listOf(Offset(0.45f, 0.46f), Offset(0.47f, 0.46f))
+    ),
+    // ذ (zal): dal body, then one dot above.
+    "ذ" to listOf(
+        listOf(Offset(0.54f, 0.46f), Offset(0.57f, 0.52f), Offset(0.56f, 0.59f), Offset(0.49f, 0.61f), Offset(0.43f, 0.60f)),
+        listOf(Offset(0.51f, 0.38f), Offset(0.53f, 0.38f))
+    ),
+    // ث (se): be bowl, then three dots above.
+    "ث" to listOf(
+        listOf(Offset(0.62f, 0.56f), Offset(0.55f, 0.62f), Offset(0.47f, 0.645f), Offset(0.40f, 0.645f), Offset(0.33f, 0.595f)),
+        listOf(Offset(0.41f, 0.46f), Offset(0.43f, 0.46f)),
+        listOf(Offset(0.47f, 0.46f), Offset(0.49f, 0.46f)),
+        listOf(Offset(0.53f, 0.46f), Offset(0.55f, 0.46f))
+    ),
+    // ژ (zhe): re body, then three dots above.
+    "ژ" to listOf(
+        listOf(Offset(0.56f, 0.43f), Offset(0.57f, 0.53f), Offset(0.55f, 0.62f), Offset(0.50f, 0.69f), Offset(0.45f, 0.72f), Offset(0.40f, 0.66f)),
+        listOf(Offset(0.46f, 0.34f), Offset(0.48f, 0.34f)),
+        listOf(Offset(0.52f, 0.34f), Offset(0.54f, 0.34f)),
+        listOf(Offset(0.58f, 0.34f), Offset(0.60f, 0.34f))
     )
 )
 
