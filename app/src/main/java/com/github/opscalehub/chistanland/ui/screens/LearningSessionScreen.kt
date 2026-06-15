@@ -15,6 +15,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -451,6 +453,41 @@ private val letterStrokeData: Map<String, List<List<Offset>>> = mapOf(
     // و (vav): one stroke — round head loop (clockwise from the top), then a short tail down-left.
     "و" to listOf(
         listOf(Offset(0.50f, 0.49f), Offset(0.58f, 0.56f), Offset(0.56f, 0.64f), Offset(0.49f, 0.67f), Offset(0.43f, 0.63f), Offset(0.43f, 0.55f), Offset(0.49f, 0.62f), Offset(0.45f, 0.71f))
+    ),
+    // ب (be): shallow bowl drawn right→left, then one dot below the centre.
+    "ب" to listOf(
+        listOf(Offset(0.62f, 0.56f), Offset(0.55f, 0.62f), Offset(0.47f, 0.645f), Offset(0.40f, 0.645f), Offset(0.33f, 0.595f)),
+        listOf(Offset(0.49f, 0.73f), Offset(0.51f, 0.73f))
+    ),
+    // ت (te): same bowl, then two dots above.
+    "ت" to listOf(
+        listOf(Offset(0.62f, 0.56f), Offset(0.55f, 0.62f), Offset(0.47f, 0.645f), Offset(0.40f, 0.645f), Offset(0.33f, 0.595f)),
+        listOf(Offset(0.43f, 0.45f), Offset(0.45f, 0.45f)),
+        listOf(Offset(0.55f, 0.45f), Offset(0.57f, 0.45f))
+    ),
+    // ن (nun): deep bowl (right→left), then one dot above the centre.
+    "ن" to listOf(
+        listOf(Offset(0.58f, 0.50f), Offset(0.57f, 0.62f), Offset(0.50f, 0.70f), Offset(0.43f, 0.62f), Offset(0.40f, 0.50f)),
+        listOf(Offset(0.49f, 0.47f), Offset(0.51f, 0.47f))
+    ),
+    // ی (ye): wide bowl with a return tail (right→left), then two dots below.
+    "ی" to listOf(
+        listOf(Offset(0.60f, 0.53f), Offset(0.59f, 0.63f), Offset(0.50f, 0.68f), Offset(0.43f, 0.64f), Offset(0.41f, 0.55f)),
+        listOf(Offset(0.45f, 0.72f), Offset(0.47f, 0.72f)),
+        listOf(Offset(0.53f, 0.72f), Offset(0.55f, 0.72f))
+    ),
+    // ز (ze): same body as ر, plus one dot above.
+    "ز" to listOf(
+        listOf(Offset(0.56f, 0.43f), Offset(0.57f, 0.53f), Offset(0.55f, 0.62f), Offset(0.50f, 0.69f), Offset(0.45f, 0.72f), Offset(0.40f, 0.66f)),
+        listOf(Offset(0.51f, 0.40f), Offset(0.53f, 0.40f))
+    ),
+    // س (sin): three teeth then a shallow bowl tail, all right→left, no dots.
+    "س" to listOf(
+        listOf(Offset(0.64f, 0.58f), Offset(0.61f, 0.52f), Offset(0.58f, 0.58f), Offset(0.54f, 0.52f), Offset(0.51f, 0.58f), Offset(0.47f, 0.52f), Offset(0.44f, 0.58f), Offset(0.40f, 0.63f), Offset(0.45f, 0.66f))
+    ),
+    // م (mim): round head loop then a tail descending below the baseline, one stroke.
+    "م" to listOf(
+        listOf(Offset(0.54f, 0.52f), Offset(0.58f, 0.56f), Offset(0.54f, 0.60f), Offset(0.49f, 0.57f), Offset(0.52f, 0.52f), Offset(0.51f, 0.62f), Offset(0.48f, 0.72f))
     )
 )
 
@@ -595,21 +632,21 @@ fun CoverageTracingSurface(item: com.github.opscalehub.chistanland.data.Learning
                 .clip(CircleShape)
                 .onGloballyPositioned { boxSize = it.size }
                 .pointerInput(item.id) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            if (!completed) {
-                                stroke.add(offset)
-                                registerTouch(offset)
+                    // Handle the initial touch-down AND every move in one loop, so a plain TAP
+                    // (no movement) counts too — needed to complete single-point dot strokes
+                    // (e.g. the dots of ب ت ن), which detectDragGestures would ignore.
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        if (!completed) { stroke.add(down.position); registerTouch(down.position) }
+                        do {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { c ->
+                                if (c.pressed && !completed) {
+                                    stroke.add(c.position); registerTouch(c.position); c.consume()
+                                }
                             }
-                        },
-                        onDrag = { change, _ ->
-                            if (!completed) {
-                                change.consume()
-                                stroke.add(change.position)
-                                registerTouch(change.position)
-                            }
-                        }
-                    )
+                        } while (event.changes.any { it.pressed })
+                    }
                 },
             contentAlignment = Alignment.Center
         ) {
