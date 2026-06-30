@@ -73,7 +73,6 @@ fun LearningSessionScreen(
     val avatarState by viewModel.avatarState.collectAsState()
     val activityType by viewModel.activityType.collectAsState()
     val missingCharIndex by viewModel.missingCharIndex.collectAsState()
-    val isGenerating by viewModel.isGenerating.collectAsState()
     val recognitionOptions by viewModel.recognitionOptions.collectAsState()
     
     val view = LocalView.current
@@ -233,7 +232,7 @@ fun LearningSessionScreen(
 
                             when (targetType) {
                                 LearningViewModel.ActivityType.STORY_TELLING -> {
-                                    StoryModeUI(item = item, isGenerating = isGenerating)
+                                    StoryModeUI(item = item)
                                 }
                                 LearningViewModel.ActivityType.TRACE_LETTER -> {
                                     TracingModeUI(item = item, onComplete = { viewModel.onCharTyped(item.character) })
@@ -338,7 +337,7 @@ fun LearningSessionScreen(
 }
 
 @Composable
-fun StoryModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, isGenerating: Boolean) {
+fun StoryModeUI(item: com.github.opscalehub.chistanland.data.LearningItem) {
     val infiniteTransition = rememberInfiniteTransition(label = "StoryFloat")
     val floatAnim by infiniteTransition.animateFloat(
         initialValue = -10f, 
@@ -361,15 +360,11 @@ fun StoryModeUI(item: com.github.opscalehub.chistanland.data.LearningItem, isGen
             Text("📖 دنیایِ قصه‌ها", fontSize = 28.sp, fontWeight = FontWeight.Black, color = DeepOcean)
             Spacer(modifier = Modifier.height(24.dp))
             Box(modifier = Modifier.size(160.dp), contentAlignment = Alignment.Center) {
-                if (isGenerating) {
-                    CircularProgressIndicator(color = MangoOrange, strokeWidth = 6.dp, modifier = Modifier.size(80.dp))
-                } else {
-                    Text(getEmojiForWord(item.word), fontSize = 100.sp)
-                }
+                Text(getEmojiForWord(item.word), fontSize = 100.sp)
             }
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = if (isGenerating) "درحالِ ساختن یک داستان جادویی..." else "به داستان گوش کن عزیزم...",
+                text = "به داستان گوش کن عزیزم...",
                 textAlign = TextAlign.Center,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,

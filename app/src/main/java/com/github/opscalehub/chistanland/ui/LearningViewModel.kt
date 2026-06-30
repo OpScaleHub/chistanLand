@@ -4,13 +4,11 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.opscalehub.chistanland.BuildConfig
 import com.github.opscalehub.chistanland.data.AppDatabase
 import com.github.opscalehub.chistanland.data.LearningItem
 import com.github.opscalehub.chistanland.data.LearningRepository
 import com.github.opscalehub.chistanland.util.AudioManager
 import com.github.opscalehub.chistanland.util.TtsManager
-import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -38,11 +36,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val prefs = application.getSharedPreferences("chistan_prefs", Context.MODE_PRIVATE)
     private val _dailyStreak = MutableStateFlow(initialDailyStreak())
     val dailyStreak: StateFlow<Int> = _dailyStreak.asStateFlow()
-
-    private val generativeModel = GenerativeModel(
-        modelName = "gemini-1.5-flash",
-        apiKey = BuildConfig.GEMINI_API_KEY
-    )
 
     val allItems: StateFlow<List<LearningItem>> = repository.allItems
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -86,8 +79,6 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     private val _isReviewMode = MutableStateFlow(false)
     val isReviewMode: StateFlow<Boolean> = _isReviewMode.asStateFlow()
 
-    private val _isGenerating = MutableStateFlow(false)
-    val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
     // Image-pick (WORD_RECOGNITION): the shuffled set of picture choices, one of which matches.
     private val _recognitionOptions = MutableStateFlow<List<LearningItem>>(emptyList())
@@ -296,23 +287,14 @@ class LearningViewModel(application: Application) : AndroidViewModel(application
     }
 
     private suspend fun generateAndPlayStory(item: LearningItem) {
-        _isGenerating.value = true
-        try {
-            val prompt = """
-                یک داستان بسیار کوتاه، شاد و کودکانه (حداکثر ۲ جمله) برای یک کودک ۴ ساله درباره کلمه «${item.word}» بگو.
-                داستان باید با این کلمه شروع شود و حس کنجکاوی کودک را برانگیزد.
-                فقط متن داستان را برگردان.
-            """.trimIndent()
-            
-            val response = generativeModel.generateContent(prompt)
-            val story = response.text ?: "یه روز یه ${item.word} مهربون داشتیم که خیلی خوشحال بود!"
-            ttsManager.speak(story)
-            delay(5000) 
-        } catch (e: Exception) {
-            ttsManager.speak("بیا با هم درباره ${item.word} یاد بگیریم!")
-        } finally {
-            _isGenerating.value = false
-        }
+        val stories = listOf(
+            "یه روز ${item.word} کوچولو رفت بازی، اونقدر شاد بود که همه خندیدن!",
+            "${item.word} توی باغ بود که یه پروانه رنگارنگ اومد پیشش و باهاش دوست شد!",
+            "روزی بود که ${item.word} یه راز جادویی پیدا کرد و سفر شگفت‌انگیزی شروع شد!",
+            "یه ${item.word} مهربون بود که هر روز با دوستاش بازی می‌کرد و همه رو خوشحال می‌کرد!"
+        )
+        ttsManager.speak(stories.random())
+        delay(5000)
     }
 
     fun startLearning(item: LearningItem, isReview: Boolean = false) {

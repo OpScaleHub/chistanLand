@@ -25,37 +25,35 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-
-        val geminiApiKey: String = project.findProperty("GEMINI_API_KEY") as? String ?: ""
-        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
     }
 
-    // Release signing. Locally (no keystore) `assembleRelease` still produces an
-    // unsigned APK; in CI the keystore + passwords arrive via env vars / secrets.
-    val keystoreFile = (System.getenv("KEYSTORE_PATH")
-        ?: project.findProperty("KEYSTORE_PATH") as String?)?.let { file(it) }
+    // Release signing. Locally (no keystore) assembleRelease falls back to debug signing.
+    // In CI the keystore arrives via SIGNING_KEY_BASE64 secret; passwords via env vars.
+    val signingKeyPath: String? = System.getenv("SIGNING_KEY_PATH")
     signingConfigs {
-        if (keystoreFile != null && keystoreFile.exists()) {
+        if (signingKeyPath != null) {
             create("release") {
-                storeFile = keystoreFile
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                    ?: project.findProperty("KEYSTORE_PASSWORD") as String?
-                keyAlias = System.getenv("KEY_ALIAS")
-                    ?: project.findProperty("KEY_ALIAS") as String?
-                keyPassword = System.getenv("KEY_PASSWORD")
-                    ?: project.findProperty("KEY_PASSWORD") as String?
+                storeFile = file(signingKeyPath)
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfigs.findByName("release")?.let { signingConfig = it }
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = if (signingKeyPath != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
     compileOptions {
@@ -69,14 +67,13 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true
     }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    
+
     configurations.all {
         resolutionStrategy {
             force("androidx.core:core:1.13.1")
@@ -103,7 +100,6 @@ dependencies {
     implementation(libs.lottie.compose)
     implementation(libs.rive.compose)
     implementation(libs.coil.compose)
-    implementation(libs.google.generativeai)
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
